@@ -18,7 +18,7 @@ main :: proc() {
 		strings.clone_to_cstring(os.args[0]),
 	)
 	if cf.is_error(result) {
-		fmt.println("Error: {}", result.details)
+		fmt.println("Error: ", result.details)
 		return
 	}
 
