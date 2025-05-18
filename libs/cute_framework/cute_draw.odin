@@ -14,7 +14,7 @@ foreign lib {
 	draw_circle :: proc(circle: Circle, thickness: f32) ---
 	draw_capsule :: proc(capsule: Capsule, thickness: f32) ---
 	draw_line :: proc(p0: la.Vector2f32, p1: la.Vector2f32, thickness: f32) ---
-	draw_polyline :: proc(points: ^la.Vector2f32, count: c.int, thickness: f32, loop: bool) ---
+	draw_polyline :: proc(points: [^]la.Vector2f32, count: c.int, thickness: f32, loop: bool) ---
 	draw_push_layer :: proc(layer: c.int) ---
 	draw_pop_layer :: proc() -> c.int ---
 	draw_push_color :: proc(c: la.Vector4f32) ---

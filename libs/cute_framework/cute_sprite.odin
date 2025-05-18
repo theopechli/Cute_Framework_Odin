@@ -18,7 +18,7 @@ Play_Direction :: enum c.int {
 Animation :: struct {
 	name:           cstring,
 	play_direction: Play_Directions,
-	frames:         ^Frame,
+	frames:         [^]Frame,
 	frame_offset:   c.int,
 }
 
@@ -34,8 +34,8 @@ Sprite :: struct {
 	h:                     c.int,
 	scale:                 la.Vector2f32,
 	offset:                la.Vector2f32,
-	pivots:                ^la.Vector2f32,
-	slices:                ^Sprite_Slice,
+	pivots:                [^]la.Vector2f32,
+	slices:                [^]Sprite_Slice,
 	opacity:               f32,
 	frame_index:           c.int,
 	loop_count:            c.int,
@@ -46,7 +46,7 @@ Sprite :: struct {
 	easy_sprite_id:        u64,
 	play_direction:        Play_Directions,
 	animation:             ^Animation,
-	animations:            ^^Animation,
+	animations:            ^[^]Animation,
 	transform:             Transform,
 }
 

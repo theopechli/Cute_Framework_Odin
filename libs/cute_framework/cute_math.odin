@@ -84,5 +84,5 @@ make_transform :: #force_inline proc() -> Transform {
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	norms :: proc(verts: ^la.Vector2f32, norms: ^la.Vector2f32, count: c.int) ---
+	norms :: proc(verts: [^]la.Vector2f32, norms: [^]la.Vector2f32, count: c.int) ---
 }
