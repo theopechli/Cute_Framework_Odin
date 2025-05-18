@@ -6,6 +6,12 @@
 
 There is a very simple example inside the `src` folder.
 
+### Note
+
+In order to use [ImGui](https://github.com/ocornut/imgui), you need bindings for [cimgui](https://github.com/cimgui/cimgui). The bindings in `./libs/cimgui` are there only to run this example.
+
+Read more at [Cute Framework's documentation](https://randygaul.github.io/cute_framework/#/topics/dear_imgui).
+
 ## Clone
 
 To clone the repository, run:
@@ -14,7 +20,7 @@ To clone the repository, run:
 git clone --recurse-submodules https://github.com/theopechli/Cute_Framework_Odin
 ```
 
-If you have cloned the repository without its submodules, then run:
+If you have cloned the repository without its submodules, then go to the root of the repository and run:
 
 ```
 git submodule update --init --recursive

@@ -7,5 +7,5 @@ odin build ./src \
      -strict-style \
      -debug \
      -o:none \
-     -collection:libs=libs \
+     -collection:libs=./libs \
      -out:./build/Cute_Framework_Odin_Debug.bin
