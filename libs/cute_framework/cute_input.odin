@@ -242,6 +242,7 @@ Key_Button :: enum {
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
+	key_down :: proc(key: Key_Button) -> bool ---
 	key_just_pressed :: proc(key: Key_Button) -> bool ---
 }
 

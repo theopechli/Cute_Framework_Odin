@@ -8,7 +8,6 @@ Frame :: struct {
 	delay: f32,
 }
 
-Play_Directions :: bit_set[Play_Direction; c.int]
 Play_Direction :: enum c.int {
 	Forwards,
 	Backwards,
@@ -17,7 +16,7 @@ Play_Direction :: enum c.int {
 
 Animation :: struct {
 	name:           cstring,
-	play_direction: Play_Directions,
+	play_direction: Play_Direction,
 	frames:         [^]Frame,
 	frame_offset:   c.int,
 }
@@ -44,13 +43,13 @@ Sprite :: struct {
 	loop:                  bool,
 	t:                     f32,
 	easy_sprite_id:        u64,
-	play_direction:        Play_Directions,
+	play_direction:        Play_Direction,
 	animation:             ^Animation,
 	animations:            ^[^]Animation,
 	transform:             Transform,
 }
 
-sprite_defaults :: #force_inline proc() -> Sprite {
+sprite_defaults :: #force_inline proc "contextless" () -> Sprite {
 	return Sprite {
 		scale                 = {1, 1},
 		opacity               = 1.0,
@@ -58,6 +57,94 @@ sprite_defaults :: #force_inline proc() -> Sprite {
 		transform             = make_transform(),
 		loop                  = true,
 	}
+}
+
+sprite_update :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	if sprite.paused {
+		return
+	}
+	if sprite.animation == nil {
+		return
+	}
+
+	sprite.t += DELTA_TIME * sprite.play_speed_multiplier
+	frame_count: i32 = alen(sprite.animation.frames)
+	direction := sprite.play_direction
+	if direction == .Forwards {
+		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
+			sprite.frame_index += 1
+			sprite.t = 0
+			if sprite.frame_index == frame_count {
+				if sprite.loop {
+					sprite.loop_count += 1
+					sprite.frame_index = 0
+				} else {
+					sprite.frame_index -= 1
+				}
+			}
+		}
+	} else if direction == .Backwards {
+		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
+			sprite.frame_index -= 1
+			sprite.t = 0
+			if sprite.frame_index < 0 {
+				if sprite.loop {
+					sprite.loop_count += 1
+					sprite.frame_index = frame_count - 1
+				} else {
+					sprite.frame_index += 1
+				}
+			}
+		}
+	} else if direction == .Ping_Pong {
+		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
+			sprite.t = 0
+			if sprite.loop_count % 2 == 0 {
+				sprite.frame_index -= 1
+				if sprite.frame_index < 0 {
+					if sprite.loop {
+						sprite.loop_count += 1
+						sprite.frame_index += 1
+					} else  {
+						sprite.frame_index = 0
+					}
+				}
+			} else {
+				sprite.frame_index += 1
+				if sprite.frame_index == frame_count {
+					sprite.loop_count += 1
+					sprite.frame_index -= 1
+				}
+			}
+		}
+	}
+}
+
+sprite_reset :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.paused = false
+	sprite.frame_index = 0
+	sprite.loop_count = 0
+	sprite.t = 0
+	if sprite.animation != nil {
+		sprite.play_direction = sprite.animation.play_direction
+	}
+}
+
+sprite_play :: #force_inline proc(sprite: ^Sprite, animation: cstring) {
+	assert(sprite != nil)
+	if sprite.animations == nil {
+		return
+	}
+	sprite.animation = hfind(sprite.animations, sintern(animation))
+	assert(sprite.animation != nil)
+	sprite_reset(sprite)
+}
+
+sprite_flip_x :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.scale.x *= -1.0
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
