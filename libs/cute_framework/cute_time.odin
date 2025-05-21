@@ -2,7 +2,7 @@ package cute_framework
 
 import "core:c"
 
-On_Update_Fn :: proc(udata: rawptr)
+On_Update_Fn :: proc "c" (udata: rawptr)
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {

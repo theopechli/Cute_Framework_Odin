@@ -240,9 +240,20 @@ Key_Button :: enum {
 	Count = 512,
 }
 
+Mouse_Button :: enum {
+	Left,
+	Right,
+	Middle
+}
+
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	key_down :: proc(key: Key_Button) -> bool ---
 	key_just_pressed :: proc(key: Key_Button) -> bool ---
+	mouse_x :: proc() -> f32 ---
+	mouse_y :: proc() -> f32 ---
+	mouse_down :: proc(button: Mouse_Button) -> bool ---
+	mouse_just_pressed :: proc(button: Mouse_Button) -> bool ---
+	mouse_wheel_motion :: proc() -> f32 ---
 }
 
