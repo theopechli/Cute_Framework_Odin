@@ -24,7 +24,7 @@ rnd_seed :: #force_inline proc "contextless" (seed: u64) -> Rnd {
 
 rnd_uint64 :: #force_inline proc "contextless" (rnd: ^Rnd) -> u64 {
 	x := rnd.state[0]
-	y := rnd.state[0]
+	y := rnd.state[1]
 	rnd.state[0] = y
 	x ~= x << 23
 	x ~= x >> 17
