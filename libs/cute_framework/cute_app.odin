@@ -23,6 +23,8 @@ App_Option_Flag :: enum c.int {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	default_display :: proc() -> Display_ID ---
+	display_width :: proc(display_id: Display_ID) -> c.int ---
+	display_height :: proc(display_id: Display_ID) -> c.int ---
 	display_refresh_rate :: proc(display_id: Display_ID) -> f32 ---
 	make_app :: proc(window_title: cstring, display_id: Display_ID, x, y, w, h: c.int, options: App_Option_Flags, argv0: cstring) -> Result ---
 	destroy_app :: proc() ---

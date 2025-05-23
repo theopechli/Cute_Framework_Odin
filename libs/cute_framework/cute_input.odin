@@ -243,7 +243,7 @@ Key_Button :: enum {
 Mouse_Button :: enum {
 	Left,
 	Right,
-	Middle
+	Middle,
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
