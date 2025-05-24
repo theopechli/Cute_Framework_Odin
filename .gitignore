@@ -1,1 +1,4 @@
 build/
+libs/cute_framework/linux/
+libs/cute_framework/windows/
+libs/cute_framework/darwin/

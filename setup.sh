@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 set -eu
 
 export CC=gcc
@@ -9,6 +8,7 @@ NPROCS=$(nproc --ignore=2)
 
 git submodule init
 
+OS="linux"
 PROJECT_PATH=$(pwd)
 LIBS_PATH="${PROJECT_PATH}/libs"
 THIRD_PARTY_PATH="${PROJECT_PATH}/third_party"
@@ -22,24 +22,26 @@ CUTE_FRAMEWORK_BUILD_DIR="build"
 
 LIBS_CUTE_FRAMEWORK_PATH="${LIBS_PATH}/cute_framework"
 
-mkdir -p "${LIBS_CUTE_FRAMEWORK_PATH}" "${LIBS_CUTE_FRAMEWORK_PATH}/linux"
+mkdir -p "${LIBS_CUTE_FRAMEWORK_PATH}" "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
 
 cd "${CUTE_FRAMEWORK_PATH}"
 
 cmake -S . -B "${CUTE_FRAMEWORK_BUILD_DIR}" -GNinja \
       -DCMAKE_BUILD_TYPE=Release \
+      -DCF_FRAMEWORK_STATIC=OFF \
       -DCF_FRAMEWORK_BUILD_SAMPLES=OFF \
       -DCF_FRAMEWORK_BUILD_TESTS=OFF \
       -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
       -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build "${CUTE_FRAMEWORK_BUILD_DIR}" -j $NPROCS
 
-find "${THIRD_PARTY_PATH}" -type f -regex '.*\.a$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/linux"
+find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.a$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
+find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.so$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
 
 cp -f \
    "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so" \
    "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so.0" \
    "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so.0.2.8" \
-   "${LIBS_CUTE_FRAMEWORK_PATH}/linux"
+   "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
 
 cd "${PROJECT_PATH}"

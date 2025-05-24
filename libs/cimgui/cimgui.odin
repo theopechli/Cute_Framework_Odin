@@ -9,7 +9,7 @@ when ODIN_OS == .Linux || ODIN_OS == .Darwin {
 when ODIN_OS == .Windows {
 	foreign import lib "../cute_framework/windows/cute.lib"
 } else when ODIN_OS == .Linux {
-	foreign import lib "../cute_framework/linux/libcute.a"
+	foreign import lib "../cute_framework/linux/libcute.so"
 } else when ODIN_OS == .Darwin {
 	foreign import lib "../cute_framework/darwin/libcute.a"
 }
