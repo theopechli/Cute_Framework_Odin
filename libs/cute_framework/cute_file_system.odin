@@ -7,4 +7,5 @@ foreign lib {
 	fs_dismount :: proc(archive: cstring) -> Result ---
 	fs_file_exists :: proc(virtual_path: cstring) -> bool ---
 	fs_read_entire_file_to_memory :: proc(virtual_path: cstring, size: ^uint) -> rawptr ---
+	fs_write_entire_buffer_to_file :: proc(virtual_path: cstring, data: rawptr, size: uint) -> Result ---
 }

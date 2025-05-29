@@ -2570,7 +2570,7 @@ foreign lib {
 	// - A selectable highlights when hovered, and can display another color when selected.
 	// - Neighbors selectable extend their highlight bounds in order to leave no gap between them. This is so a series of selected Selectable appear contiguous.
 	// "bool selected" carry the selection state (read-only). Selectable() is clicked is returns true so you can modify your selection state. size.x==0.0: use remaining width, size.x>0.0: specify width. size.y==0.0: use label height, size.y>0.0: specify height
-	@(link_name = "igSelectable")
+	@(link_name = "igSelectable_Bool")
 	selectable :: proc(label: cstring, selected: bool = false, flags: Selectable_Flags = {}, size: Vec2 = Vec2{0, 0}) -> bool ---
 	// "bool* p_selected" point to the selection state (read-write), as a convenient helper.
 	@(link_name = "igSelectableBoolPtr")
