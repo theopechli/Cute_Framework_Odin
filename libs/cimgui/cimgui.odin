@@ -2528,7 +2528,7 @@ foreign lib {
 	set_color_edit_options :: proc(flags: Color_Edit_Flags) ---
 	// Widgets: Trees
 	// - TreeNode functions return true when the node is open, in which case you need to also call TreePop() when you are finished displaying the tree node contents.
-	@(link_name = "igTreeNode")
+	@(link_name = "igTreeNode_Str")
 	tree_node :: proc(label: cstring) -> bool ---
 	// helper variation to easily decorelate the id from the displayed string. Read the FAQ about why and how to use ID. to align arbitrary text at the same level as a TreeNode() you can use Bullet().
 	@(link_name = "igTreeNodeStr")
