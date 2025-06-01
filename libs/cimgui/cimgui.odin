@@ -2698,7 +2698,7 @@ foreign lib {
 	//  - Use IsWindowAppearing() after BeginPopup() to tell if a window just opened.
 	//  - IMPORTANT: Notice that for OpenPopupOnItemClick() we exceptionally default flags to 1 (== ImGuiPopupFlags_MouseButtonRight) for backward compatibility with older API taking 'int mouse_button = 1' parameter
 	// call to mark popup as open (don't call every frame!).
-	@(link_name = "igOpenPopup")
+	@(link_name = "igOpenPopup_Str")
 	open_popup :: proc(str_id: cstring, popup_flags: Popup_Flags = {}) ---
 	// id overload to facilitate calling from nested stacks
 	@(link_name = "igOpenPopupID")
