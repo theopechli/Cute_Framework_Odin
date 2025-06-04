@@ -1,6 +1,7 @@
 package cute_framework
 
 import "core:c"
+import "core:math"
 import la "core:math/linalg"
 
 Sin_Cos :: la.Vector2f32
@@ -41,6 +42,26 @@ Manifold :: struct {
 	n:              la.Vector2f32,
 }
 
+safe_norm :: #force_inline proc "contextless" (a: la.Vector2f32) -> la.Vector2f32 {
+	sq := la.dot(a, a)
+	return sq != 0.0 ? a / math.sqrt(sq) : {0.0, 0.0}
+}
+
+bezier :: #force_inline proc "contextless" (a: la.Vector2f32, c0: la.Vector2f32, b: la.Vector2f32, t: f32) -> la.Vector2f32 {
+	return la.lerp(la.lerp(a, c0, t), la.lerp(c0, b, t), t)
+}
+
+sincos :: #force_inline proc "contextless" () -> Sin_Cos {
+	return Sin_Cos {1.0, 0.0}
+}
+
+make_transform :: #force_inline proc "contextless" () -> Transform {
+	return Transform {
+		p = {0, 0},
+		r = sincos(),
+	}
+}
+
 make_aabb :: #force_inline proc "contextless" (lo: la.Vector2f32, hi: la.Vector2f32) -> AABB {
 	return AABB {
 		lo = lo,
@@ -54,6 +75,10 @@ make_aabb_pos_w_h :: #force_inline proc "contextless" (pos: la.Vector2f32, w: f3
 	bb.lo = pos - he
 	bb.hi = pos + he
 	return bb
+}
+
+expand_aabb :: #force_inline proc "contextless" (aabb: AABB, v: la.Vector2f32) -> AABB {
+	return make_aabb(aabb.lo - v, aabb.hi + v)
 }
 
 center :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
@@ -83,17 +108,6 @@ Shape_Type :: enum c.int {
 	AABB,
 	Capsule,
 	Poly,
-}
-
-sincos :: #force_inline proc "contextless" () -> Sin_Cos {
-	return Sin_Cos {1.0, 0.0}
-}
-
-make_transform :: #force_inline proc "contextless" () -> Transform {
-	return Transform {
-		p = {0, 0},
-		r = sincos(),
-	}
 }
 
 TOI_Result :: struct {

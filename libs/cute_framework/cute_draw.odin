@@ -16,6 +16,7 @@ foreign lib {
 	draw_capsule :: proc(capsule: Capsule, thickness: f32) ---
 	draw_line :: proc(p0: la.Vector2f32, p1: la.Vector2f32, thickness: f32) ---
 	draw_polyline :: proc(points: [^]la.Vector2f32, count: c.int, thickness: f32, loop: bool) ---
+	draw_bezier_line :: proc(a: la.Vector2f32, c0: la.Vector2f32, b: la.Vector2f32, iters: c.int, thickness: f32) ---
 	draw_push_layer :: proc(layer: c.int) ---
 	draw_pop_layer :: proc() -> c.int ---
 	draw_push_color :: proc(c: la.Vector4f32) ---
@@ -31,4 +32,5 @@ foreign lib {
 	draw_push :: proc() ---
 	draw_pop :: proc() ---
 	render_to :: proc(canvas: Canvas, clear: bool = false) ---
+	screen_to_world :: proc(point: la.Vector2f32) -> la.Vector2f32 ---
 }
