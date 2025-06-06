@@ -121,6 +121,8 @@ TOI_Result :: struct {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	norms :: proc(verts: [^]la.Vector2f32, norms: [^]la.Vector2f32, count: c.int) ---
+	aabb_to_aabb :: proc(a: AABB, b: AABB) -> bool ---
+	aabb_to_capsule :: proc(a: AABB, b: Capsule) -> bool ---
 	aabb_to_aabb_manifold :: proc(a: AABB, b: AABB) -> Manifold ---
 	aabb_to_capsule_manifold :: proc(a: AABB, b: Capsule) -> Manifold ---
 	toi :: proc(a: rawptr, shape_type_a: Shape_Type, transform_a: ^Transform, vel_a: la.Vector2f32, b: rawptr, shape_type_b: Shape_Type, transform_b: ^Transform, vel_b: la.Vector2f32, use_radius: c.int) -> TOI_Result ---
