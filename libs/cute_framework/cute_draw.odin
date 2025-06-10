@@ -21,6 +21,19 @@ foreign lib {
 	draw_pop_layer :: proc() -> c.int ---
 	draw_push_color :: proc(c: la.Vector4f32) ---
 	draw_pop_color :: proc() -> la.Vector4f32 ---
+	make_font :: proc(path: cstring, font_name: cstring) -> Result ---
+	destroy_font :: proc(font_name: cstring) ---
+	push_font :: proc(font: cstring) ---
+	pop_font :: proc() -> cstring ---
+	push_font_size :: proc(size: f32) ---
+	pop_font_size :: proc() -> f32 ---
+	push_font_blur :: proc(blur: c.int) ---
+	pop_font_blur :: proc() -> c.int ---
+	push_text_wrap_width :: proc(width: f32) ---
+	pop_text_wrap_width :: proc() -> f32 ---
+	push_text_vertical_layout :: proc(layout_vertically: bool) ---
+	pop_text_vertical_layout :: proc() -> bool ---
+	draw_text :: proc(text: cstring, position: la.Vector2f32, num_chars_to_draw: c.int = -1) ---
 	make_draw_shader :: proc(path: cstring) -> Shader ---
 	draw_push_shader :: proc(shader: Shader) ---
 	draw_pop_shader :: proc() -> Shader ---

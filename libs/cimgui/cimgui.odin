@@ -2536,7 +2536,7 @@ foreign lib {
 	// "
 	@(link_name = "igTreeNodePtr")
 	tree_node_ptr :: proc(ptr_id: rawptr, fmt: cstring, #c_vararg args: ..any) -> bool ---
-	@(link_name = "igTreeNodeEx")
+	@(link_name = "igTreeNodeEx_Str")
 	tree_node_ex :: proc(label: cstring, flags: Tree_Node_Flags = {}) -> bool ---
 	@(link_name = "igTreeNodeExStr")
 	tree_node_ex_str :: proc(str_id: cstring, flags: Tree_Node_Flags, fmt: cstring, #c_vararg args: ..any) -> bool ---
