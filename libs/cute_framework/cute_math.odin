@@ -77,6 +77,10 @@ make_aabb_pos_w_h :: #force_inline proc "contextless" (pos: la.Vector2f32, w: f3
 	return bb
 }
 
+make_aabb_from_top_left :: #force_inline proc "contextless" (top_left: la.Vector2f32, w: f32, h: f32) -> AABB {
+	return make_aabb(top_left + {0.0, -h}, top_left + {w, 0.0})
+}
+
 expand_aabb :: #force_inline proc "contextless" (aabb: AABB, v: la.Vector2f32) -> AABB {
 	return make_aabb(aabb.lo - v, aabb.hi + v)
 }

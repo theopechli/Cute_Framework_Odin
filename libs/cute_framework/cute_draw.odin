@@ -33,6 +33,7 @@ foreign lib {
 	pop_text_wrap_width :: proc() -> f32 ---
 	push_text_vertical_layout :: proc(layout_vertically: bool) ---
 	pop_text_vertical_layout :: proc() -> bool ---
+	text_size :: proc(text: cstring, num_chars_to_draw: c.int = -1) -> la.Vector2f32 ---
 	draw_text :: proc(text: cstring, position: la.Vector2f32, num_chars_to_draw: c.int = -1) ---
 	make_draw_shader :: proc(path: cstring) -> Shader ---
 	draw_push_shader :: proc(shader: Shader) ---
