@@ -21,6 +21,13 @@ AABB :: struct {
 	hi: la.Vector2f32,
 }
 
+Rect :: struct {
+	x: c.int,
+	y: c.int,
+	w: c.int,
+	h: c.int,
+}
+
 POLY_MAX_VERTS :: 8
 
 Poly :: struct {

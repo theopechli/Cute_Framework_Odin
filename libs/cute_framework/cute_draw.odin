@@ -12,6 +12,8 @@ foreign lib {
 	draw_sprite :: proc(sprite: ^Sprite) ---
 	draw_quad :: proc(bb: AABB, thickness: f32, chubbiness: f32) ---
 	draw_quad_fill :: proc(bb: AABB, chubbiness: f32) ---
+	draw_box_rounded :: proc(bb: AABB, thickness: f32, radius: f32) ---
+	draw_box_rounded_fill :: proc(bb: AABB, radius: f32) ---
 	draw_circle :: proc(circle: Circle, thickness: f32) ---
 	draw_capsule :: proc(capsule: Capsule, thickness: f32) ---
 	draw_line :: proc(p0: la.Vector2f32, p1: la.Vector2f32, thickness: f32) ---
@@ -35,6 +37,8 @@ foreign lib {
 	pop_text_vertical_layout :: proc() -> bool ---
 	text_size :: proc(text: cstring, num_chars_to_draw: c.int = -1) -> la.Vector2f32 ---
 	draw_text :: proc(text: cstring, position: la.Vector2f32, num_chars_to_draw: c.int = -1) ---
+	draw_push_scissor :: proc(scissor: Rect) ---
+	draw_pop_scissor :: proc() -> Rect ---
 	make_draw_shader :: proc(path: cstring) -> Shader ---
 	draw_push_shader :: proc(shader: Shader) ---
 	draw_pop_shader :: proc() -> Shader ---
@@ -42,6 +46,7 @@ foreign lib {
 	draw_set_uniform :: proc(name: cstring, data: rawptr, type: Uniform_Type, array_length: c.int) ---
 	draw_set_uniform_int :: proc(name: cstring, val: c.int) ---
 	draw_set_uniform_float :: proc(name: cstring, val: f32) ---
+	draw_translate :: proc(w: f32, h: f32) ---
 	draw_scale :: proc(w: f32, h: f32) ---
 	draw_push :: proc() ---
 	draw_pop :: proc() ---

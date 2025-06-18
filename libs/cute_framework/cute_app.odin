@@ -33,5 +33,6 @@ foreign lib {
 	app_signal_shutdown :: proc() ---
 	app_update :: proc(on_update: On_Update_Fn = nil) ---
 	app_draw_onto_screen :: proc(clear: bool = false) -> c.int ---
+	app_get_size :: proc(w: ^c.int, h: ^c.int) ---
 	app_get_framerate :: proc() -> f32 ---
 }
