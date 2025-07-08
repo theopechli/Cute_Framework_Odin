@@ -58,6 +58,10 @@ bezier :: #force_inline proc "contextless" (a: la.Vector2f32, c0: la.Vector2f32,
 	return la.lerp(la.lerp(a, c0, t), la.lerp(c0, b, t), t)
 }
 
+sincos_f :: #force_inline proc "contextless" (radians: f32) -> Sin_Cos {
+	return Sin_Cos {math.sin(radians), math.cos(radians)}
+}
+
 sincos :: #force_inline proc "contextless" () -> Sin_Cos {
 	return Sin_Cos {1.0, 0.0}
 }

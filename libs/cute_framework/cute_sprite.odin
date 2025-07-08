@@ -59,6 +59,16 @@ sprite_defaults :: #force_inline proc "contextless" () -> Sprite {
 	}
 }
 
+sprite_get_scale :: #force_inline proc(sprite: ^Sprite) -> la.Vector2f32 {
+	assert(sprite != nil)
+	return sprite.scale
+}
+
+sprite_set_scale :: #force_inline proc(sprite: ^Sprite, scale: la.Vector2f32) {
+	assert(sprite != nil)
+	sprite.scale = scale
+}
+
 sprite_update :: #force_inline proc(sprite: ^Sprite) {
 	assert(sprite != nil)
 	if sprite.paused {
