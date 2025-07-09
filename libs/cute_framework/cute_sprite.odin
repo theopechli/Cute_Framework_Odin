@@ -131,6 +131,11 @@ sprite_update :: #force_inline proc(sprite: ^Sprite) {
 	}
 }
 
+sprite_set_loop :: #force_inline proc(sprite: ^Sprite, loop: bool) {
+	assert(sprite != nil)
+	sprite.loop = loop
+}
+
 sprite_reset :: #force_inline proc(sprite: ^Sprite) {
 	assert(sprite != nil)
 	sprite.paused = false
@@ -152,9 +157,47 @@ sprite_play :: #force_inline proc(sprite: ^Sprite, animation: cstring) {
 	sprite_reset(sprite)
 }
 
+
+sprite_pause :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.paused = true
+}
+
+sprite_unpause :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.paused = false
+}
+
+sprite_toggle_pause :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.paused = !sprite.paused
+}
+
+sprite_will_finish :: #force_inline proc(sprite: ^Sprite) -> bool {
+	assert(sprite != nil)
+	// TODO -- Backwards and pingpong.
+	if sprite.animation == nil do return false
+	if sprite.frame_index == sprite_frame_count(sprite) - 1 {
+		return sprite.t + DELTA_TIME * sprite.play_speed_multiplier >= sprite.animation.frames[sprite.frame_index].delay
+	} else {
+		return false
+	}
+}
+
 sprite_flip_x :: #force_inline proc(sprite: ^Sprite) {
 	assert(sprite != nil)
 	sprite.scale.x *= -1.0
+}
+
+sprite_flip_y :: #force_inline proc(sprite: ^Sprite) {
+	assert(sprite != nil)
+	sprite.scale.y *= -1.0
+}
+
+sprite_frame_count :: #force_inline proc(sprite: ^Sprite) -> c.int {
+	assert(sprite != nil)
+	if sprite.animation == nil do return 0
+	return alen(sprite.animation.frames)
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")

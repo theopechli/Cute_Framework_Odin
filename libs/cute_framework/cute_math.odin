@@ -1,7 +1,6 @@
 package cute_framework
 
 import "core:c"
-import "core:math"
 import la "core:math/linalg"
 
 Sin_Cos :: la.Vector2f32
@@ -51,7 +50,7 @@ Manifold :: struct {
 
 safe_norm :: #force_inline proc "contextless" (a: la.Vector2f32) -> la.Vector2f32 {
 	sq := la.dot(a, a)
-	return sq != 0.0 ? a / math.sqrt(sq) : {0.0, 0.0}
+	return sq != 0.0 ? a / la.sqrt(sq) : {0.0, 0.0}
 }
 
 bezier :: #force_inline proc "contextless" (a: la.Vector2f32, c0: la.Vector2f32, b: la.Vector2f32, t: f32) -> la.Vector2f32 {
@@ -59,7 +58,7 @@ bezier :: #force_inline proc "contextless" (a: la.Vector2f32, c0: la.Vector2f32,
 }
 
 sincos_f :: #force_inline proc "contextless" (radians: f32) -> Sin_Cos {
-	return Sin_Cos {math.sin(radians), math.cos(radians)}
+	return Sin_Cos {la.sin(radians), la.cos(radians)}
 }
 
 sincos :: #force_inline proc "contextless" () -> Sin_Cos {
