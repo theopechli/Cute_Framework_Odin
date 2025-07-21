@@ -244,6 +244,9 @@ Mouse_Button :: enum {
 	Left,
 	Right,
 	Middle,
+	X1,
+	X2,
+	Count,
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")

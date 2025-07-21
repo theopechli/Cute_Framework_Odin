@@ -31,23 +31,11 @@ extern "C" {
  * Quick list of unsupported features. CF's focus is on the 2D use case, so most of these features are
  * omit since they aren't super useful for 2D.
  * 
- *     - Mipmaps
- *     - MSAA
  *     - Blend color constant
  *     - Multiple render targets (aka color/texture attachments)
- *     - Depth bias tunables
  *     - Cube map
  *     - 3D textures
  *     - Texture arrays
- *     - Other primitive types besides triangles
- *     - Anisotropy tunable
- *     - Min/max LOD tunable
- *
- * These features are to be added to CF in the future:
- * 
- *     - Indexed meshes
- *     - Instance rendering
- *     - Compute shaders
  * 
  * The basic flow of rendering a frame looks something like this:
  * 
@@ -144,7 +132,7 @@ typedef struct CF_Shader { uint64_t id; } CF_Shader;
 	/* @entry Metal backend. */                                                    \
 	CF_ENUM(BACKEND_TYPE_METAL,  3)                                                \
 	/* @entry A "secret" backend for platforms under non-disclosure agreement. */  \
-	CF_ENUM(BACKEND_TYPE_PRIVATE,  4)                                           \
+	CF_ENUM(BACKEND_TYPE_PRIVATE,  4)                                              \
 	/* @end */
 
 typedef enum CF_BackendType
@@ -440,6 +428,41 @@ CF_INLINE const char* cf_filter_to_string(CF_Filter filter) {
 }
 
 /**
+ * @enum     CF_MipFilter
+ * @category graphics
+ * @brief    Describes how the GPU samples between mipmap levels.
+ * @related  CF_MipFilter cf_mip_filter_to_string CF_TextureParams
+ */
+#define CF_MIP_FILTER_DEFS                                                  \
+	/* @entry Samples the nearest mip level without blending. */            \
+	CF_ENUM(MIP_FILTER_NEAREST, 0)                                          \
+	/* @entry Linearly blends between mip levels for smooth transitions. */ \
+	CF_ENUM(MIP_FILTER_LINEAR, 1)                                           \
+	/* @end */
+
+typedef enum CF_MipFilter
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_MIP_FILTER_DEFS
+	#undef CF_ENUM
+} CF_MipFilter;
+
+/**
+ * @function cf_mip_filter_to_string
+ * @category graphics
+ * @brief    Returns a `CF_MipFilter` converted to a C string.
+ * @related  CF_MipFilter cf_mip_filter_to_string CF_TextureParams
+ */
+CF_INLINE const char* cf_mip_filter_to_string(CF_MipFilter filter) {
+	switch (filter) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_MIP_FILTER_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
  * @enum     CF_WrapMode
  * @category graphics
  * @brief    Wrap modes to define behavior when addressing a texture beyond the [0,1] range.
@@ -494,17 +517,32 @@ typedef struct CF_TextureParams
 	/* @member The filtering operation to use when fetching data out of the texture, on the GPU. See `CF_Filter`. */
 	CF_Filter filter;
 
-	/* @member The texture wrapping behavior when addressing beyond [0,1] for the u-coordinate. See `CF_WrapMode`. */
+	/* @member The texture wrapping behavior when addressing beyond [0,1) for the u-coordinate. See `CF_WrapMode`. */
 	CF_WrapMode wrap_u;
 
-	/* @member The texture wrapping behavior when addressing beyond [0,1] for the v-coordinate. See `CF_WrapMode`. */
+	/* @member The texture wrapping behavior when addressing beyond [0,1) for the v-coordinate. See `CF_WrapMode`. */
 	CF_WrapMode wrap_v;
+
+	/* @member The filtering operation to use when fetching data out of a mipmap, on the GPU. See `CF_MipFilter`. */
+	CF_MipFilter mip_filter;
 
 	/* @member Number of elements (usually pixels) along the width of the texture. */
 	int width;
 
 	/* @member Number of elements (usually pixels) along the height of the texture. */
 	int height;
+
+	/* @member 0 = auto compute from dimensions if `generate_mipmaps` is true, else specify an explicit number. */
+	int mip_count;
+
+	/* @member Defaulted to false, true to enable mipmap generation and will be initialized with full mipmaps. */
+	bool generate_mipmaps;
+
+	/* @member Mipmap level bias; positive = blurrier, negative = sharper. */
+	float mip_lod_bias;
+
+	/* @member Maximum anisotropy level; 1.0 disables anisotropic filtering. */
+	float max_anisotropy;
 
 	/* @member Set this to true if you plan to update the texture contents each frame. */
 	bool stream;
@@ -547,9 +585,34 @@ CF_API void CF_CALL cf_destroy_texture(CF_Texture texture);
  * @param    size       The size in bytes of `data`.
  * @remarks  If you plan to frequently update the texture once per frame, it's recommended to set `stream` to
  *           true in the creation params `CF_TextureParams`.
- * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
  */
 CF_API void CF_CALL cf_texture_update(CF_Texture texture, void* data, int size);
+
+/**
+ * @function cf_texture_update_mip
+ * @category graphics
+ * @brief    Updates the contents of a specific mip level of a `CF_Texture`.
+ * @param    texture    The texture to update.
+ * @param    data       Pointer to the raw pixel data to upload.
+ * @param    size       Size in bytes of `data`.
+ * @param    mip_level  The mipmap level to update (0 = base level).
+ * @remarks  If you update the texture frequently (e.g., once per frame), it's recommended to set `stream = true`
+ *           when creating the texture using `CF_TextureParams`.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
+ */
+CF_API void CF_CALL cf_texture_update_mip(CF_Texture texture, void* data, int size, int mip_level);
+
+/**
+ * @function cf_generate_mipmaps
+ * @category graphics
+ * @brief    Generates all remaining mip levels from the base level of the texture.
+ * @param    texture    The texture to generate mipmaps for.
+ * @remarks  This is useful when the base level has been updated manually (e.g., for dynamic or render target textures)
+ *           and you want to downsample to fill in the full mip chain.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
+ */
+CF_API void CF_CALL cf_generate_mipmaps(CF_Texture texture);
 
 /**
  * @function cf_texture_handle
@@ -570,9 +633,9 @@ CF_API uint64_t CF_CALL cf_texture_handle(CF_Texture texture);
  * @related  CF_Shader cf_shader_directory cf_make_shader
  */
 #define CF_SHADER_STAGE_DEFS \
-	/* @entry */ \
+	/* @entry */                      \
 	CF_ENUM(SHADER_STAGE_VERTEX,   0) \
-	/* @entry */ \
+	/* @entry */                      \
 	CF_ENUM(SHADER_STAGE_FRAGMENT, 1) \
 	/* @end */
 
@@ -667,8 +730,8 @@ CF_API CF_Shader CF_CALL cf_make_shader(const char* vertex_path, const char* fra
  * @function cf_make_shader_from_source
  * @category graphics
  * @brief    Creates a shader from strings containing glsl source code.
- * @param    vertex_path   A virtual path to the shader. See [Virtual File System](https://randygaul.github.io/cute_framework/#/topics/virtual_file_system).
- * @remarks  The shader paths must be in the shader directory. See `cf_shader_directory`.
+ * @param    vertex_src    The vertex shader source as C-string.
+ * @param    fragment_src  The fragment shader source as C-string.
  * @related  CF_Shader cf_make_shader cf_shader_directory cf_apply_shader CF_Material
  */
 CF_API CF_Shader CF_CALL cf_make_shader_from_source(const char* vertex_src, const char* fragment_src);
@@ -723,6 +786,47 @@ CF_API void CF_CALL cf_destroy_shader(CF_Shader shader);
 // Render Canvases.
 
 /**
+ * @enum     CF_SampleCount
+ * @category graphics
+ * @brief    Multisample count used for MSAA render targets.
+ * @remarks  Turning this on will attempt to use hardware to blur everything you render.
+ *           You may not sample from canvas textures with sample counts greater than 1.
+ * @related  CF_SampleCount cf_sample_count_string CF_TextureParams
+ */
+#define CF_SAMPLE_COUNT_DEFS \
+	/* @entry No multisampling. */                          \
+	CF_ENUM(SAMPLE_COUNT_1, 0)                              \
+	/* @entry Multisample anti-aliasing with 2x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_2, 1)                              \
+	/* @entry Multisample anti-aliasing with 4x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_4, 2)                              \
+	/* @entry Multisample anti-aliasing with 8x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_8, 3)                              \
+	/* @end */
+
+typedef enum CF_SampleCount
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_SAMPLE_COUNT_DEFS
+	#undef CF_ENUM
+} CF_SampleCount;
+
+/**
+ * @function cf_samplecount_string
+ * @category graphics
+ * @brief    Returns a `CF_SampleCount` as a string.
+ * @related  CF_SampleCount CF_TextureParams
+ */
+CF_INLINE const char* cf_samplecount_string(CF_SampleCount count) {
+	switch (count) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_SAMPLE_COUNT_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
  * @struct   CF_CanvasParams
  * @category graphics
  * @brief    A texture the GPU can draw upon (with an optional depth/stencil texture).
@@ -745,6 +849,9 @@ typedef struct CF_CanvasParams
 
 	/* @member The texture used to store depth and stencil information when rendering to the canvas. See `CF_TextureParams`. */
 	CF_TextureParams depth_stencil_target;
+
+	/* @member MSAA sample count; must be 1, 2, 4, or 8 (see `CF_SampleCount`). Defaults to 1 (no MSAA). */
+	CF_SampleCount sample_count;
 } CF_CanvasParams;
 // @end
 
@@ -776,6 +883,7 @@ CF_API void CF_CALL cf_destroy_canvas(CF_Canvas canvas);
  * @function cf_canvas_get_target
  * @category graphics
  * @brief    Returns the `target` texture the canvas renders upon.
+ * @remarks  If you turn on MSAA you may not sample from this texture.
  * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
  */
 CF_API CF_Texture CF_CALL cf_canvas_get_target(CF_Canvas canvas);
@@ -787,6 +895,17 @@ CF_API CF_Texture CF_CALL cf_canvas_get_target(CF_Canvas canvas);
  * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
  */
 CF_API CF_Texture CF_CALL cf_canvas_get_depth_stencil_target(CF_Canvas canvas);
+
+/**
+ * @function cf_clear_canvas
+ * @category graphics
+ * @brief    Clears the color and depth-stencil targets of the given canvas.
+ * @param    canvas  The canvas to clear.
+ * @remarks  This clears the canvas to its configured clear color and clears depth to 1.0 (furthest depth).
+ *           If the canvas has no depth-stencil target, only the color target will be cleared.
+ * @related  cf_make_canvas cf_clear_color cf_clear_depth_stencil
+ */
+CF_API void CF_CALL cf_clear_canvas(CF_Canvas canvas);
 
 //--------------------------------------------------------------------------------------------------
 // Mesh.
@@ -1221,6 +1340,46 @@ CF_INLINE const char* cf_blend_factor_string(CF_BlendFactor factor) {
 	default: return NULL;
 	}
 }
+/**
+ * @enum     CF_PrimitiveType
+ * @category graphics
+ * @brief    Primitive topology used for rendering geometry.
+ * @remarks  Controls how vertex input is interpreted as geometry.
+ * @related  CF_PrimitiveType cf_primitive_type_string
+ */
+#define CF_PRIMITIVE_TYPE_DEFS \
+	/* @entry A series of separate triangles. */       \
+	CF_ENUM(PRIMITIVE_TYPE_TRIANGLELIST,    0)         \
+	/* @entry A series of connected triangles. */      \
+	CF_ENUM(PRIMITIVE_TYPE_TRIANGLESTRIP,   1)         \
+	/* @entry A series of separate lines. */           \
+	CF_ENUM(PRIMITIVE_TYPE_LINELIST,        2)         \
+	/* @entry A series of connected lines. */          \
+	CF_ENUM(PRIMITIVE_TYPE_LINESTRIP,       3)         \
+	/* @end */
+
+typedef enum CF_PrimitiveType
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_PRIMITIVE_TYPE_DEFS
+	#undef CF_ENUM
+} CF_PrimitiveType;
+
+/**
+ * @function cf_primitive_type_string
+ * @category graphics
+ * @brief    Returns a `CF_PrimitiveType` converted to a C string.
+ * @related  CF_PrimitiveType
+ */
+CF_INLINE const char* cf_primitive_type_string(CF_PrimitiveType type) {
+	switch (type) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_PRIMITIVE_TYPE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
 
 /**
  * @struct   CF_StencilFunction
@@ -1383,6 +1542,9 @@ typedef struct CF_BlendState
  */
 typedef struct CF_RenderState
 {
+	/* @member The type of primitive to draw, as in triangles or lines (triangle list by default). See `CF_PrimitiveType`. */
+	CF_PrimitiveType primitive_type;
+
 	/* @member Controls whether or not to cull triangles based on their winding order. See `CF_CullMode`. */
 	CF_CullMode cull_mode;
 
@@ -1397,6 +1559,21 @@ typedef struct CF_RenderState
 
 	/* @member Sets up how to perform (if at all) stencil testing. See `CF_StencilParams`. */
 	CF_StencilParams stencil;
+
+	/* @member A scalar factor controlling the depth value added to each fragment. */
+	float depth_bias_constant_factor;
+
+	/* @member The maximum depth bias of a fragment. */
+	float depth_bias_clamp;
+
+	/* @member A scalar factor applied to a fragment's slope in depth calculations. */
+	float depth_bias_slope_factor;
+
+	/* @member True to bias fragment depth values. */
+	bool enable_depth_bias;
+
+	/* @member True to enable depth clip, false to enable depth clamp. */
+	bool enable_depth_clip;
 } CF_RenderState;
 // @end
 
@@ -1720,6 +1897,7 @@ CF_INLINE CF_Canvas make_canvas(CF_CanvasParams pass_params) { return cf_make_ca
 CF_INLINE void destroy_canvas(CF_Canvas canvas) { cf_destroy_canvas(canvas); }
 CF_INLINE CF_Texture canvas_get_target(CF_Canvas canvas) { return cf_canvas_get_target(canvas); }
 CF_INLINE CF_Texture canvas_get_depth_stencil_target(CF_Canvas canvas) { return cf_canvas_get_depth_stencil_target(canvas); }
+CF_INLINE void clear_canvas(CF_Canvas canvas) { cf_clear_canvas(canvas); }
 CF_INLINE CF_Mesh make_mesh(int vertex_buffer_size_in_bytes, const CF_VertexAttribute* attributes, int attribute_count, int vertex_stride) { return cf_make_mesh(vertex_buffer_size_in_bytes, attributes, attribute_count, vertex_stride); }
 CF_INLINE void destroy_mesh(CF_Mesh mesh) { cf_destroy_mesh(mesh); }
 CF_INLINE void mesh_update_vertex_data(CF_Mesh mesh, void* data, int count) { cf_mesh_update_vertex_data(mesh, data, count); }
@@ -1744,6 +1922,7 @@ CF_INLINE void draw_elements() { cf_draw_elements(); }
 CF_INLINE void commit() { cf_commit(); }
 
 }
+void cf_clear_canvas(CF_Canvas canvas_handle);
 
 CF_INLINE bool operator==(const CF_RenderState& a, const CF_RenderState& b) { return !CF_MEMCMP(&a, &b, sizeof(a)); }
 CF_INLINE bool operator==(CF_Shader a, CF_Shader b) { return a.id == b.id; }

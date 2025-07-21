@@ -18,7 +18,6 @@ when ODIN_OS == .Windows {
 		"./linux/libglslang.a",
 		"./linux/libglslang-default-resource-limits.a",
 		"./linux/libs2n.a",
-		"./linux/libSDL3.so",
 		"./linux/libSDL_uclibc.a",
 		"./linux/libSPIRV.a",
 		"./linux/libSPIRV-Tools-shared.so",

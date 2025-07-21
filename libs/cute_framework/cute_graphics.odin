@@ -108,6 +108,11 @@ Filter :: enum c.int {
 	Linear,
 }
 
+Mip_Filter :: enum c.int {
+	Nearest,
+	Linear,
+}
+
 Wrap_Mode :: enum c.int {
 	Repeat,
 	Clamp_To_Edge,
@@ -115,14 +120,26 @@ Wrap_Mode :: enum c.int {
 }
 
 Texture_Params :: struct {
-	pixel_format: Pixel_Format,
-	usage:        Texture_Usage_Flags,
-	filter:       Filter,
-	wrap_u:       Wrap_Mode,
-	wrap_v:       Wrap_Mode,
-	width:        c.int,
-	height:       c.int,
-	stream:       bool,
+	pixel_format:     Pixel_Format,
+	usage:            Texture_Usage_Flags,
+	filter:           Filter,
+	wrap_u:           Wrap_Mode,
+	wrap_v:           Wrap_Mode,
+	mip_filter:       Mip_Filter,
+	width:            c.int,
+	height:           c.int,
+	mip_count:        c.int,
+	generate_mipmaps: bool,
+	mip_lod_bias:     f32,
+	max_anisotropy:   f32,
+	stream:           bool,
+}
+
+Sample_Count :: enum c.int {
+	_1,
+	_2,
+	_4,
+	_8,
 }
 
 Canvas_Params :: struct {
@@ -130,6 +147,7 @@ Canvas_Params :: struct {
 	target:               Texture_Params,
 	depth_stencil_enable: bool,
 	depth_stencil_target: Texture_Params,
+	sample_count:         Sample_Count,
 }
 
 Uniform_Type :: enum c.int {
@@ -137,9 +155,9 @@ Uniform_Type :: enum c.int {
 	Float,
 	Float2,
 	Float3,
+	Float4,
 	Int,
 	Int2,
-	Int3,
 	Int4,
 	Mat4,
 }
@@ -157,4 +175,6 @@ foreign lib {
 	make_canvas :: proc(canvas_params: Canvas_Params) -> Canvas ---
 	canvas_get_target :: proc(canvas: Canvas) -> Texture ---
 	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
+	clear_color :: proc(r: f32, g: f32, b: f32, a: f32) ---
+	apply_canvas :: proc(canvas: Canvas, clear: bool) ---
 }

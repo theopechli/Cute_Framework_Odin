@@ -20,6 +20,13 @@ App_Option_Flag :: enum c.int {
 	GFX_Debug,
 }
 
+MSAA :: enum c.int {
+	NONE,
+	X2,
+	X4,
+	X8,
+}
+
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	default_display :: proc() -> Display_ID ---
@@ -35,4 +42,5 @@ foreign lib {
 	app_draw_onto_screen :: proc(clear: bool = false) -> c.int ---
 	app_get_size :: proc(w: ^c.int, h: ^c.int) ---
 	app_get_framerate :: proc() -> f32 ---
+	app_set_msaa :: proc(sample_count: c.int) -> bool ---
 }

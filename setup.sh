@@ -38,10 +38,4 @@ cmake --build "${CUTE_FRAMEWORK_BUILD_DIR}" -j $NPROCS
 find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.a$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
 find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.so$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
 
-cp -f \
-   "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so" \
-   "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so.0" \
-   "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}/_deps/sdl3-build/libSDL3.so.0.2.8" \
-   "${LIBS_CUTE_FRAMEWORK_PATH}/${OS}"
-
 cd "${PROJECT_PATH}"
