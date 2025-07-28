@@ -53,4 +53,5 @@ foreign lib {
 	render_to :: proc(canvas: Canvas, clear: bool = false) ---
 	world_to_screen :: proc(point: la.Vector2f32) -> la.Vector2f32 ---
 	screen_to_world :: proc(point: la.Vector2f32) -> la.Vector2f32 ---
+	draw_canvas :: proc(canvas: Canvas, position: la.Vector2f32, scale: la.Vector2f32) ---
 }

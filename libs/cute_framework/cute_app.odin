@@ -41,6 +41,8 @@ foreign lib {
 	app_update :: proc(on_update: On_Update_Fn = nil) ---
 	app_draw_onto_screen :: proc(clear: bool = false) -> c.int ---
 	app_get_size :: proc(w: ^c.int, h: ^c.int) ---
+	app_set_borderless_fullscreen_mode :: proc()  ---
 	app_get_framerate :: proc() -> f32 ---
 	app_set_msaa :: proc(sample_count: c.int) -> bool ---
+	app_get_canvas :: proc() -> Canvas ---
 }

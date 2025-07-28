@@ -1,5 +1,7 @@
 package cute_framework
 
+import "core:c"
+
 Rnd :: struct {
 	state: [2]u64,
 }
@@ -43,7 +45,13 @@ rnd_float :: #force_inline proc "contextless" (rnd: ^Rnd) -> f32 {
 }
 
 rnd_range_float :: #force_inline proc "contextless" (rnd: ^Rnd, lo: f32, hi: f32) -> f32 {
-	range := hi - lo
-	value := rnd_float(rnd) * range
+	range := f32(hi - lo)
+	value := f32(rnd_float(rnd) * range)
+	return lo + value
+}
+
+rnd_range_int :: #force_inline proc "contextless" (rnd: ^Rnd, lo: c.int, hi: c.int) -> c.int {
+	range := c.uint64_t(hi - lo + 1)
+	value := c.int(rnd_uint64(rnd) % range)
 	return lo + value
 }
