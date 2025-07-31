@@ -150,6 +150,150 @@ Canvas_Params :: struct {
 	sample_count:         Sample_Count,
 }
 
+Vertex_Format :: enum i32 {
+	INT,
+	INT2,
+	INT3,
+	INT4,
+	UINT,
+	UINT2,
+	UINT3,
+	UINT4,
+	FLOAT,
+	FLOAT2,
+	FLOAT3,
+	FLOAT4,
+	BYTE2,
+	BYTE4,
+	UBYTE2,
+	UBYTE4,
+	BYTE2_NORM,
+	BYTE4_NORM,
+	UBYTE2_NORM,
+	UBYTE4_NORM,
+	SHORT2,
+	SHORT4,
+	USHORT2,
+	USHORT4,
+	SHORT2_NORM,
+	SHORT4_NORM,
+	USHORT2_NORM,
+	USHORT4_NORM,
+	HALF2,
+	HALF4,
+}
+
+Vertex_Attribute :: struct {
+	name: cstring,
+	format: Vertex_Format,
+	offset: i32,
+	per_instance: bool,
+}
+
+Cull_Mode :: enum i32 {
+	None,
+	Front,
+	Back,
+}
+
+Compare_Function :: enum i32 {
+	Always,
+	Never,
+	Less_Than,
+	Equal,
+	Not_Equal,
+	Less_Than_Or_Equal,
+	Greater_Than,
+	Greater_Than_Or_Equal,
+}
+
+Stencil_Op :: enum i32 {
+	Keep,
+	Zero,
+	Replace,
+	Increment_Clamp,
+	Decrement_Clamp,
+	Invert,
+	Increment_Wrap,
+	Decrement_Wrap,
+}
+
+Blend_Op :: enum i32 {
+	Add,
+	Subtract,
+	Reverse_Subtract,
+	Min,
+	Max,
+}
+
+Blend_Factor :: enum i32 {
+	Zero,
+	One,
+	Src_Color,
+	One_Minus_Src_Color,
+	Dst_Color,
+	One_Minus_Dst_Color,
+	Src_Alpha,
+	One_Minus_Src_Alpha,
+	Dst_Alpha,
+	One_Minus_Dst_Alpha,
+	Constant_Color,
+	One_Minus_Constant_Color,
+	Src_Alpha_Saturate,
+}
+
+Primitive_Type :: enum i32 {
+	Triangle_List,
+	Triangle_Strip,
+	Line_List,
+	Line_Strip,
+}
+
+Stencil_Function :: struct {
+	compare: Compare_Function,
+	fail_op: Stencil_Op,
+	depth_fail_op: Stencil_Op,
+	pass_op: Stencil_Op,
+}
+
+Stencil_Params :: struct {
+	enabled: bool,
+	read_mask: u8,
+	write_mask: u8,
+	reference: u8,
+	front: Stencil_Function,
+	back: Stencil_Function,
+}
+
+Blend_State :: struct {
+	enabled: bool,
+	pixel_format: Pixel_Format,
+	write_R_enabled: bool,
+	write_G_enabled: bool,
+	write_B_enabled: bool,
+	write_A_enabled: bool,
+	rgb_op: Blend_Op,
+	rgb_src_blend_factor: Blend_Factor,
+	rgb_dst_blend_factor: Blend_Factor,
+	alpha_op: Blend_Op,
+	alpha_src_blend_factor: Blend_Factor,
+	alpha_dst_blend_factor: Blend_Factor,
+}
+
+Render_State :: struct {
+	primitive_type: Primitive_Type,
+	cull_mode: Cull_Mode,
+	blend: Blend_State,
+	depth_compare: Compare_Function,
+	depth_write_enabled: bool,
+	stencil: Stencil_Params,
+	depth_bias_constant_factor: f32,
+	depth_bias_clamp: f32,
+	depth_bias_slope_factor: f32,
+	enable_depth_bias: bool,
+	enable_depth_clip: bool,
+}
+
 Uniform_Type :: enum c.int {
 	Unknown = -1,
 	Float,
@@ -175,6 +319,18 @@ foreign lib {
 	make_canvas :: proc(canvas_params: Canvas_Params) -> Canvas ---
 	canvas_get_target :: proc(canvas: Canvas) -> Texture ---
 	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
+	make_mesh :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]Vertex_Attribute, attribute_count: i32, vertex_stride: i32) -> Mesh ---
+	destroy_mesh :: proc(mesh: Mesh) ---
+	mesh_update_vertex_data :: proc(mesh: Mesh, data: rawptr, count: i32) ---
+	render_state_defaults :: proc() -> Render_State ---
+	make_material :: proc() -> Material ---
+	destroy_material :: proc(material: Material) ---
+	material_set_render_state :: proc(material: Material, render_state: Render_State) ---
+	material_set_uniform_fs :: proc(material: Material, name: cstring, data: rawptr, type: Uniform_Type, array_length: i32) ---
 	clear_color :: proc(r: f32, g: f32, b: f32, a: f32) ---
 	apply_canvas :: proc(canvas: Canvas, clear: bool) ---
+	apply_mesh :: proc(mesh: Mesh) ---
+	apply_shader :: proc(shader: Shader, material: Material) ---
+	draw_elements :: proc() ---
+	commit :: proc() ---
 }

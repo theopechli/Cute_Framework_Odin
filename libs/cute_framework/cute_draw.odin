@@ -7,6 +7,27 @@ draw_box :: #force_inline proc "contextless" (bb: AABB, thickness: f32, chubbine
 	draw_quad(bb, thickness, chubbiness)
 }
 
+Text_Effect :: struct {
+	effect_name: cstring,
+	on_begin: bool,
+	on_end: bool,
+	character: c.int,
+	index_into_string: c.int,
+	index_into_effect: c.int,
+	glyph_count: c.int,
+	elapsed: f32,
+	center: la.Vector2f32,
+	q0: la.Vector2f32,
+	q1: la.Vector2f32,
+	w: c.int,
+	h: c.int,
+	color: la.Vector4f32,
+	opacity: f32,
+	xadvance: f32,
+	visible: bool,
+	font_size: f32,
+}
+
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	draw_sprite :: proc(sprite: ^Sprite) ---
