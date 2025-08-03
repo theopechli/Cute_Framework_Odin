@@ -91,9 +91,7 @@ Pixel_Format_Op :: enum c.int {
 	Depth,
 }
 
-Texture_Usage_Flags :: distinct u32
-
-Texture_Usages :: bit_set[Texture_Usage; c.int]
+Texture_Usage_Flags :: bit_set[Texture_Usage; c.int]
 Texture_Usage :: enum c.int {
 	Sampler,
 	Color_Target,

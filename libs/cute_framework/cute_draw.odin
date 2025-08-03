@@ -58,6 +58,8 @@ foreign lib {
 	pop_text_vertical_layout :: proc() -> bool ---
 	text_size :: proc(text: cstring, num_chars_to_draw: c.int = -1) -> la.Vector2f32 ---
 	draw_text :: proc(text: cstring, position: la.Vector2f32, num_chars_to_draw: c.int = -1) ---
+	push_text_effect_active :: proc(effects_on: bool) ---
+	pop_text_effect_active :: proc() -> bool ---
 	draw_push_scissor :: proc(scissor: Rect) ---
 	draw_pop_scissor :: proc() -> Rect ---
 	make_draw_shader :: proc(path: cstring) -> Shader ---
