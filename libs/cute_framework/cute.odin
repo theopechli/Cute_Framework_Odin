@@ -5,6 +5,27 @@ package cute_framework
 when ODIN_OS == .Windows {
 	@(export) foreign import lib {
 		"./windows/cute.lib",
+		"./windows/physfs.lib",
+		"./windows/cute-shader.lib",
+		"./windows/OSDependent.lib",
+		"./windows/MachineIndependent.lib",
+		"./windows/GenericCodeGen.lib",
+		"./windows/glslang.lib",
+		"./windows/glslang-default-resource-limits.lib",
+		"./windows/SDL_uclibc.lib",
+		"./windows/SPIRV.lib",
+		"./windows/SPIRV-Tools-shared.lib",
+		"./windows/SPIRV-Tools-opt.lib",
+		"./windows/SPIRV-Tools.lib",
+		"./windows/SPIRV-Tools-diff.lib",
+		"./windows/SPIRV-Tools-link.lib",
+		"./windows/SPIRV-Tools-lint.lib",
+		"./windows/SPIRV-Tools-reduce.lib",
+		"./windows/spirv-cross-c.lib",
+		"./windows/spirv-cross-core.lib",
+		"./windows/spirv-cross-glsl.lib",
+		"./windows/spirv-cross-hlsl.lib",
+		"./windows/SPVRemapper.lib",
 	}
 } else when ODIN_OS == .Linux {
 	@(export) foreign import lib {

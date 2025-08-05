@@ -1,0 +1,36 @@
+@echo off
+setlocal
+
+git submodule init
+
+set "PROJECT_PATH=%cd%"
+set "LIBS_PATH=%PROJECT_PATH%\libs"
+set "THIRD_PARTY_PATH=%PROJECT_PATH%\third_party"
+
+if not exist "%LIBS_PATH%" mkdir "%LIBS_PATH%"
+
+REM Cute Framework
+set "CUTE_FRAMEWORK_PATH=%THIRD_PARTY_PATH%\cute_framework"
+set "CUTE_FRAMEWORK_BUILD_DIR=build"
+set "LIBS_CUTE_FRAMEWORK_PATH=%LIBS_PATH%\cute_framework"
+
+if not exist "%LIBS_CUTE_FRAMEWORK_PATH%" mkdir "%LIBS_CUTE_FRAMEWORK_PATH%"
+if not exist "%LIBS_CUTE_FRAMEWORK_PATH%\windows" mkdir "%LIBS_CUTE_FRAMEWORK_PATH%\windows"
+
+cd /d "%CUTE_FRAMEWORK_PATH%"
+
+cmake -S . -B %CUTE_FRAMEWORK_BUILD_DIR% -GNinja ^
+  -DCMAKE_BUILD_TYPE=Release ^
+  -DCF_FRAMEWORK_STATIC=OFF ^
+  -DCF_FRAMEWORK_BUILD_SAMPLES=ON ^
+  -DCF_FRAMEWORK_BUILD_TESTS=OFF ^
+  -DCMAKE_POLICY_VERSION_MINIMUM=3.5 ^
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ^
+  -DCMAKE_OBJECT_PATH_MAX=500
+
+cmake --build %CUTE_FRAMEWORK_BUILD_DIR%
+
+for /r "%CUTE_FRAMEWORK_PATH%\%CUTE_FRAMEWORK_BUILD_DIR%" %%F in (*.lib) do copy "%%F" "%LIBS_CUTE_FRAMEWORK_PATH%\windows\"
+for /r "%CUTE_FRAMEWORK_PATH%\%CUTE_FRAMEWORK_BUILD_DIR%" %%F in (*.dll) do copy "%%F" "%LIBS_CUTE_FRAMEWORK_PATH%\windows\"
+
+cd /d "%PROJECT_PATH%"
