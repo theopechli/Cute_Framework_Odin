@@ -182,9 +182,9 @@ Vertex_Format :: enum i32 {
 }
 
 Vertex_Attribute :: struct {
-	name: cstring,
-	format: Vertex_Format,
-	offset: i32,
+	name:         cstring,
+	format:       Vertex_Format,
+	offset:       i32,
 	per_instance: bool,
 }
 
@@ -318,15 +318,19 @@ foreign lib {
 	canvas_get_target :: proc(canvas: Canvas) -> Texture ---
 	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
 	make_mesh :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]Vertex_Attribute, attribute_count: i32, vertex_stride: i32) -> Mesh ---
+	mesh_set_instance_buffer :: proc(mesh: Mesh, instance_buffer_size_in_bytes: c.int, instance_stride: c.int) ---
 	destroy_mesh :: proc(mesh: Mesh) ---
 	mesh_update_vertex_data :: proc(mesh: Mesh, data: rawptr, count: i32) ---
+	mesh_update_instance_data :: proc(mesh: Mesh, data: rawptr, count: i32) ---
 	render_state_defaults :: proc() -> Render_State ---
 	make_material :: proc() -> Material ---
 	destroy_material :: proc(material: Material) ---
 	material_set_render_state :: proc(material: Material, render_state: Render_State) ---
+	material_set_uniform_vs :: proc(material: Material, name: cstring, data: rawptr, type: Uniform_Type, array_length: i32) ---
 	material_set_uniform_fs :: proc(material: Material, name: cstring, data: rawptr, type: Uniform_Type, array_length: i32) ---
 	clear_color :: proc(r: f32, g: f32, b: f32, a: f32) ---
 	apply_canvas :: proc(canvas: Canvas, clear: bool) ---
+	apply_viewport :: proc(x: i32, y: i32, w: i32, h: i32) ---
 	apply_mesh :: proc(mesh: Mesh) ---
 	apply_shader :: proc(shader: Shader, material: Material) ---
 	draw_elements :: proc() ---

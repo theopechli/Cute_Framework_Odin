@@ -31,7 +31,6 @@ when ODIN_OS == .Windows {
 	@(export) foreign import lib {
 		"system:stdc++",
 		"./linux/libcute.so",
-		"./linux/libphysfs.a",
 		"./linux/libcute-shader.a",
 		"./linux/libOSDependent.a",
 		"./linux/libMachineIndependent.a",

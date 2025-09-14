@@ -259,5 +259,6 @@ foreign lib {
 	mouse_down :: proc(button: Mouse_Button) -> bool ---
 	mouse_just_pressed :: proc(button: Mouse_Button) -> bool ---
 	mouse_wheel_motion :: proc() -> f32 ---
+	mouse_hide :: proc(true_to_hide: bool) ---
 }
 

@@ -62,6 +62,8 @@ foreign lib {
 	pop_text_effect_active :: proc() -> bool ---
 	draw_push_scissor :: proc(scissor: Rect) ---
 	draw_pop_scissor :: proc() -> Rect ---
+	draw_push_render_state :: proc(render_state: Render_State) ---
+	draw_pop_render_state :: proc() -> Render_State ---
 	make_draw_shader :: proc(path: cstring) -> Shader ---
 	draw_push_shader :: proc(shader: Shader) ---
 	draw_pop_shader :: proc() -> Shader ---

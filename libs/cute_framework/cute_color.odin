@@ -25,6 +25,19 @@ make_color_rgb :: #force_inline proc "contextless" (r, g, b: u8) -> la.Vector4f3
 	}
 }
 
+make_pixel_rgb :: #force_inline proc "contextless" (r, g, b: u8) -> Pixel {
+	p: Pixel
+	p.colors.r = r
+	p.colors.g = g
+	p.colors.b = b
+	p.colors.a = 255
+	return p
+}
+
+color_black :: #force_inline proc "contextless" () -> la.Vector4f32 {
+	return make_color_rgb_f(0.0, 0.0, 0.0)
+}
+
 color_grey :: #force_inline proc "contextless" () -> la.Vector4f32 {
 	return make_color_rgb_f(0.5, 0.5, 0.5)
 }
