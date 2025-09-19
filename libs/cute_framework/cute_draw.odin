@@ -44,6 +44,9 @@ foreign lib {
 	draw_pop_layer :: proc() -> c.int ---
 	draw_push_color :: proc(c: la.Vector4f32) ---
 	draw_pop_color :: proc() -> la.Vector4f32 ---
+	draw_push_vertex_attributes :: proc(r: f32, g: f32, b: f32, a: f32) ---
+	draw_push_vertex_attributes2 :: proc(attributes: la.Vector4f32) ---
+	draw_pop_vertex_attributes :: proc() -> la.Vector4f32 ---
 	make_font :: proc(path: cstring, font_name: cstring) -> Result ---
 	destroy_font :: proc(font_name: cstring) ---
 	push_font :: proc(font: cstring) ---

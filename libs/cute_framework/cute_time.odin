@@ -24,8 +24,8 @@ foreign lib {
 	set_target_framerate :: proc(frames_per_second: c.int) ---
 	set_update_udata :: proc(udata: rawptr) ---
 	pause_for :: proc(seconds: f32) ---
-	on_interval :: proc(interval: f32, offset: f32) -> bool ---
-	between_interval :: proc(interval: f32, offset: f32) -> bool ---
+	on_interval :: proc(interval: f32, offset: f32 = 0.0) -> bool ---
+	between_interval :: proc(interval: f32, offset: f32 = 0.0) -> bool ---
 	is_paused :: proc() -> bool ---
 	sleep :: proc(milliseconds: i32) ---
 	make_stopwatch :: proc() -> Stopwatch ---
