@@ -293,7 +293,7 @@ CF_API void CF_CALL cf_draw_line(CF_V2 p0, CF_V2 p1, float thickness);
  * @param    bevel_count  The number of edges used to smooth corners.
  * @related  cf_draw_line cf_draw_polyline cf_draw_bezier_line cf_draw_bezier_line2 cf_draw_arrow cf_draw_polygon_fill
  */
-CF_API void CF_CALL cf_draw_polyline(CF_V2* points, int count, float thickness, bool loop);
+CF_API void CF_CALL cf_draw_polyline(const CF_V2* points, int count, float thickness, bool loop);
 
 /**
  * @function cf_draw_polygon_fill
@@ -305,7 +305,7 @@ CF_API void CF_CALL cf_draw_polyline(CF_V2* points, int count, float thickness, 
  * @remarks  This function has a hard-limit of up to 8 points.
  * @related  cf_draw_line cf_draw_polyline cf_draw_bezier_line cf_draw_bezier_line2 cf_draw_arrow cf_draw_polygon_fill cf_draw_polygon_fill_simple
  */
-CF_API void CF_CALL cf_draw_polygon_fill(CF_V2* points, int count, float chubbiness);
+CF_API void CF_CALL cf_draw_polygon_fill(const CF_V2* points, int count, float chubbiness);
 
 /**
  * @function cf_draw_polygon_fill_simple
@@ -319,7 +319,7 @@ CF_API void CF_CALL cf_draw_polygon_fill(CF_V2* points, int count, float chubbin
  *           polygon and renders a series of triangles under the hood. Please be sure to submit your vertices in CCW order.
  * @related  cf_draw_line cf_draw_polyline cf_draw_bezier_line cf_draw_bezier_line2 cf_draw_arrow cf_draw_polygon_fill cf_draw_polygon_fill_simple
  */
-CF_API void CF_CALL cf_draw_polygon_fill_simple(CF_V2* points, int count);
+CF_API void CF_CALL cf_draw_polygon_fill_simple(const CF_V2* points, int count);
 
 /**
  * @function cf_draw_bezier_line
@@ -382,7 +382,7 @@ CF_API void CF_CALL cf_draw_push_layer(int layer);
  *           This can be used to pick which sprites/shapes should draw on top of each other.
  * @related  cf_draw_push_layer cf_draw_pop_layer cf_draw_peek_layer
  */
-CF_API int CF_CALL cf_draw_pop_layer();
+CF_API int CF_CALL cf_draw_pop_layer(void);
 
 /**
  * @function cf_draw_peek_layer
@@ -392,7 +392,7 @@ CF_API int CF_CALL cf_draw_pop_layer();
  *           This can be used to pick which sprites/shapes should draw on top of each other.
  * @related  cf_draw_push_layer cf_draw_pop_layer cf_draw_peek_layer
  */
-CF_API int CF_CALL cf_draw_peek_layer();
+CF_API int CF_CALL cf_draw_peek_layer(void);
 
 /**
  * @function cf_draw_push_color
@@ -411,7 +411,7 @@ CF_API void CF_CALL cf_draw_push_color(CF_Color c);
  * @remarks  Various draw functions do not specify a color. In these cases, the last color pushed will be used.
  * @related  cf_draw_push_color cf_draw_pop_color cf_draw_peek_color
  */
-CF_API CF_Color CF_CALL cf_draw_pop_color();
+CF_API CF_Color CF_CALL cf_draw_pop_color(void);
 
 /**
  * @function cf_draw_peek_color
@@ -420,7 +420,7 @@ CF_API CF_Color CF_CALL cf_draw_pop_color();
  * @remarks  Various draw functions do not specify a color. In these cases, the last color pushed will be used.
  * @related  cf_draw_push_color cf_draw_pop_color cf_draw_peek_color
  */
-CF_API CF_Color CF_CALL cf_draw_peek_color();
+CF_API CF_Color CF_CALL cf_draw_peek_color(void);
 
 /**
  * @function cf_draw_push_antialias
@@ -441,7 +441,7 @@ CF_API void CF_CALL cf_draw_push_antialias(bool antialias);
  *           but looks much smoother.
  * @related  cf_draw_push_antialias cf_draw_pop_antialias cf_draw_peek_antialias
  */
-CF_API bool CF_CALL cf_draw_pop_antialias();
+CF_API bool CF_CALL cf_draw_pop_antialias(void);
 
 /**
  * @function cf_draw_peek_antialias
@@ -451,7 +451,7 @@ CF_API bool CF_CALL cf_draw_pop_antialias();
  *           but looks much smoother.
  * @related  cf_draw_push_antialias cf_draw_pop_antialias cf_draw_peek_antialias
  */
-CF_API bool CF_CALL cf_draw_peek_antialias();
+CF_API bool CF_CALL cf_draw_peek_antialias(void);
 
 /**
  * @function cf_draw_push_antialias_scale
@@ -471,7 +471,7 @@ CF_API void CF_CALL cf_draw_push_antialias_scale(float scale);
  *           The number must be greater than 0, but probably not more than 2 or 3 for most cases. The default is 1.5.
  * @related  cf_draw_push_antialias_scale cf_draw_pop_antialias_scale cf_draw_peek_antialias_scale
  */
-CF_API float CF_CALL cf_draw_pop_antialias_scale();
+CF_API float CF_CALL cf_draw_pop_antialias_scale(void);
 
 /**
  * @function cf_draw_peek_antialias_scale
@@ -481,7 +481,7 @@ CF_API float CF_CALL cf_draw_pop_antialias_scale();
  *           The number must be greater than 0, but probably not more than 2 or 3 for most cases. The default is 1.5.
  * @related  cf_draw_push_antialias_scale cf_draw_pop_antialias_scale cf_draw_peek_antialias_scale
  */
-CF_API float CF_CALL cf_draw_peek_antialias_scale();
+CF_API float CF_CALL cf_draw_peek_antialias_scale(void);
 
 /**
  * @function cf_draw_push_vertex_attributes
@@ -511,7 +511,7 @@ CF_API void CF_CALL cf_draw_push_vertex_attributes2(CF_Color attributes);
  * @brief    Pops the current vertex attribute state, restoring the previous state.
  * @related  CF_Vertex cf_draw_push_vertex_attributes cf_draw_push_vertex_attributes2 cf_draw_pop_vertex_attributes cf_draw_peek_vertex_attributes
  */
-CF_API CF_Color CF_CALL cf_draw_pop_vertex_attributes();
+CF_API CF_Color CF_CALL cf_draw_pop_vertex_attributes(void);
 
 /**
  * @function cf_draw_peek_vertex_attributes
@@ -519,7 +519,7 @@ CF_API CF_Color CF_CALL cf_draw_pop_vertex_attributes();
  * @brief    Returns the current vertex attribute state.
  * @related  CF_Vertex cf_draw_push_vertex_attributes cf_draw_push_vertex_attributes2 cf_draw_pop_vertex_attributes cf_draw_peek_vertex_attributes
  */
-CF_API CF_Color CF_CALL cf_draw_peek_vertex_attributes();
+CF_API CF_Color CF_CALL cf_draw_peek_vertex_attributes(void);
 
 /**
  * @struct   CF_Vertex
@@ -609,7 +609,7 @@ CF_API void CF_CALL cf_set_vertex_callback(CF_VertexFn* vertex_fn);
  * @function cf_make_font
  * @category text
  * @brief    Constructs a font for rendering text.
- * @param    path        A virtual path to the font file. See [Virtual File System](https://randygaul.github.io/cute_framework/#/topics/virtual_file_system).
+ * @param    path        A virtual path to the font file. See [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
  * @param    font_name   A unique name for this font. Used by `cf_push_font` and friends.
  * @return   Returns any errors as `CF_Result`.
  * @remarks  Memory is only consumed when you draw a certain glyph (text character). Just loading up the font initially is
@@ -658,7 +658,7 @@ CF_API void CF_CALL cf_push_font(const char* font);
  * @brief    Pops and returns the last font name used.
  * @related  cf_make_font cf_push_font cf_pop_font cf_peek_font cf_push_font_size cf_push_font_blur cf_draw_text
  */
-CF_API const char* CF_CALL cf_pop_font();
+CF_API const char* CF_CALL cf_pop_font(void);
 
 /**
  * @function cf_peek_font
@@ -666,7 +666,7 @@ CF_API const char* CF_CALL cf_pop_font();
  * @brief    Returns the last font name used.
  * @related  cf_make_font cf_push_font cf_pop_font cf_peek_font cf_push_font_size cf_push_font_blur cf_draw_text
  */
-CF_API const char* CF_CALL cf_peek_font();
+CF_API const char* CF_CALL cf_peek_font(void);
 
 /**
  * @function cf_push_font_size
@@ -683,7 +683,7 @@ CF_API void CF_CALL cf_push_font_size(float size);
  * @brief    Pops and returns the last font size.
  * @related  cf_make_font cf_push_font cf_push_font_size cf_pop_font_size cf_peek_font_size cf_push_font_blur cf_draw_text
  */
-CF_API float CF_CALL cf_pop_font_size();
+CF_API float CF_CALL cf_pop_font_size(void);
 
 /**
  * @function cf_peek_font_size
@@ -691,7 +691,7 @@ CF_API float CF_CALL cf_pop_font_size();
  * @brief    Returns the last font size.
  * @related  cf_make_font cf_push_font cf_push_font_size cf_pop_font_size cf_peek_font_size cf_push_font_blur cf_draw_text
  */
-CF_API float CF_CALL cf_peek_font_size();
+CF_API float CF_CALL cf_peek_font_size(void);
 
 /**
  * @function cf_push_font_blur
@@ -708,7 +708,7 @@ CF_API void CF_CALL cf_push_font_blur(int blur);
  * @brief    Pops and returns the last font blur.
  * @related  cf_make_font cf_push_font cf_push_font_size cf_push_font_blur cf_pop_font_blur cf_peek_font_blur cf_draw_text
  */
-CF_API int CF_CALL cf_pop_font_blur();
+CF_API int CF_CALL cf_pop_font_blur(void);
 
 /**
  * @function cf_peek_font_blur
@@ -716,7 +716,7 @@ CF_API int CF_CALL cf_pop_font_blur();
  * @brief    Returns the last font blur.
  * @related  cf_make_font cf_push_font cf_push_font_size cf_push_font_blur cf_pop_font_blur cf_peek_font_blur cf_draw_text
  */
-CF_API int CF_CALL cf_peek_font_blur();
+CF_API int CF_CALL cf_peek_font_blur(void);
 
 /**
  * @function cf_push_text_wrap_width
@@ -733,7 +733,7 @@ CF_API void CF_CALL cf_push_text_wrap_width(float width);
  * @brief    Pops and returns the last text wrap width.
  * @related  cf_make_font cf_push_font cf_push_text_wrap_width cf_pop_text_wrap_width cf_peek_text_wrap_width cf_push_text_clip_box cf_draw_text
  */
-CF_API float CF_CALL cf_pop_text_wrap_width();
+CF_API float CF_CALL cf_pop_text_wrap_width(void);
 
 /**
  * @function cf_peek_text_wrap_width
@@ -741,7 +741,7 @@ CF_API float CF_CALL cf_pop_text_wrap_width();
  * @brief    Returns the last text wrap width.
  * @related  cf_make_font cf_push_font cf_push_text_wrap_width cf_pop_text_wrap_width cf_peek_text_wrap_width cf_push_text_clip_box cf_draw_text
  */
-CF_API float CF_CALL cf_peek_text_wrap_width();
+CF_API float CF_CALL cf_peek_text_wrap_width(void);
 
 /**
  * @function cf_push_text_vertical_layout
@@ -758,7 +758,7 @@ CF_API void CF_CALL cf_push_text_vertical_layout(bool layout_vertically);
  * @brief    Pops and returns the last vertical layout state.
  * @related  cf_make_font cf_push_font cf_push_text_vertical_layout cf_pop_text_vertical_layout cf_peek_text_vertical_layout cf_draw_text
  */
-CF_API bool CF_CALL cf_pop_text_vertical_layout();
+CF_API bool CF_CALL cf_pop_text_vertical_layout(void);
 
 /**
  * @function cf_peek_text_vertical_layout
@@ -766,7 +766,7 @@ CF_API bool CF_CALL cf_pop_text_vertical_layout();
  * @brief    Returns the last vertical layout state.
  * @related  cf_make_font cf_push_font cf_push_text_vertical_layout cf_pop_text_vertical_layout cf_peek_text_vertical_layout cf_draw_text
  */
-CF_API bool CF_CALL cf_peek_text_vertical_layout();
+CF_API bool CF_CALL cf_peek_text_vertical_layout(void);
 
 /**
  * @function cf_text_width
@@ -811,6 +811,40 @@ CF_API CF_V2 CF_CALL cf_text_size(const char* text, int num_chars_to_draw);
  * @related  cf_make_font cf_draw_text cf_text_effect_register cf_draw_to cf_app_draw_onto_screen
  */
 CF_API void CF_CALL cf_draw_text(const char* text, CF_V2 position, int num_chars_to_draw /*= -1*/);
+
+/**
+ * @function cf_push_text_id
+ * @category text
+ * @brief    Push a text id for text drawing.
+ * @param    id               The text id.
+ * @remarks  The default behaviour for text effect is such that: every time a new string is passed to `cf_draw_text`,
+ *           the text effects will be reinitialized.
+ *           This can be jarring in some cases.
+ *           To override this behaviour, you can use this function, passing it a stable identifier.
+ *           All subsequent calls to `cf_draw_text` with the same `id` will have the same `CF_TextEffect.elapsed` value,
+ *           creating the illusion of continuous text effect.
+ *
+ *           Pushing an `id` of 0 will also reset to the default behaviour.
+ *
+ * @related  cf_draw_text cf_text_effect_register CF_TextEffect
+ */
+CF_API void CF_CALL cf_push_text_id(uint64_t id);
+
+/**
+ * @function cf_pop_text_id
+ * @category text
+ * @brief    Pops and returns the last text id.
+ * @related  cf_push_text_id cf_draw_text cf_text_effect_register CF_TextEffect
+ */
+CF_API uint64_t CF_CALL cf_pop_text_id(void);
+
+/**
+ * @function cf_peek_text_id
+ * @category text
+ * @brief    Returns the last text_id.
+ * @related  cf_push_text_id cf_draw_text cf_text_effect_register CF_TextEffect
+ */
+CF_API uint64_t CF_CALL cf_peek_text_id(void);
 
 /**
  * @struct   CF_TextEffect
@@ -1074,7 +1108,7 @@ CF_API void CF_CALL cf_push_text_effect_active(bool effects_on);
  * @brief    Pops the previously pushed activated state for text effects. See `cf_push_text_effect_active`.
  * @related  cf_push_text_effect_active cf_pop_text_effect_active cf_peek_text_effect_active
  */
-CF_API bool CF_CALL cf_pop_text_effect_active();
+CF_API bool CF_CALL cf_pop_text_effect_active(void);
 
 /**
  * @function cf_peek_text_effect_active
@@ -1082,7 +1116,7 @@ CF_API bool CF_CALL cf_pop_text_effect_active();
  * @brief    Returns the last text active state.
  * @related  cf_push_text_effect_active cf_pop_text_effect_active cf_peek_text_effect_active
  */
-CF_API bool CF_CALL cf_peek_text_effect_active();
+CF_API bool CF_CALL cf_peek_text_effect_active(void);
 
 /**
  * @function cf_draw_push_viewport
@@ -1099,7 +1133,7 @@ CF_API void CF_CALL cf_draw_push_viewport(CF_Rect viewport);
  * @brief    TODO
  * @related  TODO
  */
-CF_API CF_Rect CF_CALL cf_draw_pop_viewport();
+CF_API CF_Rect CF_CALL cf_draw_pop_viewport(void);
 
 /**
  * @function cf_draw_peek_viewport
@@ -1107,7 +1141,7 @@ CF_API CF_Rect CF_CALL cf_draw_pop_viewport();
  * @brief    TODO
  * @related  TODO
  */
-CF_API CF_Rect CF_CALL cf_draw_peek_viewport();
+CF_API CF_Rect CF_CALL cf_draw_peek_viewport(void);
 
 /**
  * @function cf_draw_push_scissor
@@ -1124,7 +1158,7 @@ CF_API void CF_CALL cf_draw_push_scissor(CF_Rect scissor);
  * @brief    Pops and returns the last `CF_Rect` for the scissor box.
  * @related  TODO
  */
-CF_API CF_Rect CF_CALL cf_draw_pop_scissor();
+CF_API CF_Rect CF_CALL cf_draw_pop_scissor(void);
 
 /**
  * @function cf_draw_peek_scissor
@@ -1132,7 +1166,7 @@ CF_API CF_Rect CF_CALL cf_draw_pop_scissor();
  * @brief    Returns the last `CF_Rect` for the scissor box.
  * @related  TODO
  */
-CF_API CF_Rect CF_CALL cf_draw_peek_scissor();
+CF_API CF_Rect CF_CALL cf_draw_peek_scissor(void);
 
 /**
  * @function cf_draw_push_render_state
@@ -1148,14 +1182,14 @@ CF_API void CF_CALL cf_draw_push_render_state(CF_RenderState render_state);
  * @category draw
  * @brief    Pops and returns the last `CF_RenderState`.* @related  CF_RenderState cf_draw_filter cf_draw_push_viewport cf_draw_push_scissor cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state cf_render_to cf_app_draw_onto_screen
  */
-CF_API CF_RenderState CF_CALL cf_draw_pop_render_state();
+CF_API CF_RenderState CF_CALL cf_draw_pop_render_state(void);
 
 /**
  * @function cf_draw_peek_render_state
  * @category draw
  * @brief    Returns the last `CF_RenderState`.* @related  CF_RenderState cf_draw_filter cf_draw_push_viewport cf_draw_push_scissor cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state cf_render_to cf_app_draw_onto_screen
  */
-CF_API CF_RenderState CF_CALL cf_draw_peek_render_state();
+CF_API CF_RenderState CF_CALL cf_draw_peek_render_state(void);
 
 /**
  * @function cf_draw_set_atlas_dimensions
@@ -1199,7 +1233,7 @@ typedef struct CF_DrawShaderBytecode
  * @category draw
  * @brief    Creates a custom draw shader.
  * @remarks  Your shader must be written in GLSL 450, and must follow some specific rules to be compatible with the draw API. For more in-depth explanations,
- *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/#/topics/drawing?id=shaders). Make sure to call `cf_shader_directory` first.
+ *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/topics/drawing#shaders). Make sure to call `cf_shader_directory` first.
  * @related  CF_Shader cf_draw_push_shader cf_draw_pop_shader cf_draw_peek_shader cf_make_draw_shader_from_source
  */
 CF_API CF_Shader CF_CALL cf_make_draw_shader(const char* path);
@@ -1209,7 +1243,7 @@ CF_API CF_Shader CF_CALL cf_make_draw_shader(const char* path);
  * @category draw
  * @brief    Creates a custom draw shader from source string.
  * @remarks  Your shader must be written in GLSL 450, and must follow some specific rules to be compatible with the draw API. For more in-depth explanations,
- *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/#/topics/drawing?id=shaders). If you wish to include other files into
+ *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/topics/drawing#shaders). If you wish to include other files into
  *           your shader via `#include` make sure to call `cf_shader_directory` first.
  * @related  CF_Shader cf_draw_push_shader cf_draw_pop_shader cf_draw_peek_shader
  */
@@ -1220,7 +1254,7 @@ CF_API CF_Shader CF_CALL cf_make_draw_shader_from_source(const char* src);
  * @category draw
  * @brief    Creates a custom draw shader from bytecode.
  * @remarks  Your shader must be written in GLSL 450, and must follow some specific rules to be compatible with the draw API. For more in-depth explanations,
- *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/#/topics/drawing?id=shaders).
+ *           see CF's docs on [Draw Shaders](https://randygaul.github.io/cute_framework/topics/drawing#shaders).
  * @related  CF_Shader CF_DrawShaderBytecode cf_draw_push_shader cf_draw_pop_shader cf_draw_peek_shader
  */
 CF_API CF_Shader CF_CALL cf_make_draw_shader_from_bytecode(CF_DrawShaderBytecode bytecode);
@@ -1239,7 +1273,7 @@ CF_API void CF_CALL cf_draw_push_shader(CF_Shader shader);
  * @brief    Pops the custom shader and restores the previous state.
  * @related  CF_Shader cf_draw_push_shader cf_draw_pop_shader cf_draw_peek_shader
  */
-CF_API CF_Shader CF_CALL cf_draw_pop_shader();
+CF_API CF_Shader CF_CALL cf_draw_pop_shader(void);
 
 /**
  * @function cf_draw_peek_shader
@@ -1247,7 +1281,7 @@ CF_API CF_Shader CF_CALL cf_draw_pop_shader();
  * @brief    Returns the current custom shader.
  * @related  CF_Shader cf_draw_push_shader cf_draw_pop_shader cf_draw_peek_shader
  */
-CF_API CF_Shader CF_CALL cf_draw_peek_shader();
+CF_API CF_Shader CF_CALL cf_draw_peek_shader(void);
 
 /**
  * @function cf_draw_push_alpha_discard
@@ -1265,7 +1299,7 @@ CF_API void CF_CALL cf_draw_push_alpha_discard(bool true_enable_alpha_discard);
  * @remarks  Alpha discarding is useful to throw away pixels with zero alpha, for cutouts or as an optimization, or for certain blending techniques.
  * @related  TODO
  */
-CF_API bool CF_CALL cf_draw_pop_alpha_discard();
+CF_API bool CF_CALL cf_draw_pop_alpha_discard(void);
 
 /**
  * @function cf_draw_peek_alpha_discard
@@ -1274,7 +1308,7 @@ CF_API bool CF_CALL cf_draw_pop_alpha_discard();
  * @remarks  Alpha discarding is useful to throw away pixels with zero alpha, for cutouts or as an optimization, or for certain blending techniques.
  * @related  TODO
  */
-CF_API bool CF_CALL cf_draw_peek_alpha_discard();
+CF_API bool CF_CALL cf_draw_peek_alpha_discard(void);
 
 /**
  * @function cf_draw_set_texture
@@ -1427,7 +1461,7 @@ CF_API void CF_CALL cf_draw_TSR_absolute(CF_V2 position, CF_V2 scale, float radi
  *           ```
  * @related  cf_draw_push cf_draw_pop cf_draw_peek cf_draw_translate cf_draw_transform cf_draw_translate cf_draw_scale cf_draw_rotate cf_draw_TSR
  */
-CF_API void CF_CALL cf_draw_push();
+CF_API void CF_CALL cf_draw_push(void);
 
 /**
  * @function cf_draw_pop
@@ -1437,7 +1471,7 @@ CF_API void CF_CALL cf_draw_push();
  *           system of anything else that needs to draw. See `cf_draw_push` for details.
  * @related  cf_draw_push cf_draw_pop cf_draw_peek cf_draw_translate cf_draw_transform cf_draw_translate cf_draw_scale cf_draw_rotate cf_draw_TSR
  */
-CF_API void CF_CALL cf_draw_pop();
+CF_API void CF_CALL cf_draw_pop(void);
 
 /**
  * @function cf_draw_peek
@@ -1446,7 +1480,7 @@ CF_API void CF_CALL cf_draw_pop();
  * @remarks  Multiplying this matrix against a vector will transform the vector to "cam space" or "eye space".
  * @related  cf_draw_push cf_draw_pop
  */
-CF_API CF_M3x2 CF_CALL cf_draw_peek();
+CF_API CF_M3x2 CF_CALL cf_draw_peek(void);
 
 /**
  * @function cf_draw_projection
@@ -1491,7 +1525,7 @@ CF_API CF_V2 CF_CALL cf_screen_to_world(CF_V2 point);
  * @remarks  This can be useful for colliding against the screen, or implementing occlusion culling.
  * @related  cf_world_to_screen cf_screen_to_world cf_screen_bounds_to_world
  */
-CF_API CF_Aabb CF_CALL cf_screen_bounds_to_world();
+CF_API CF_Aabb CF_CALL cf_screen_bounds_to_world(void);
 
 /**
  * @function cf_draw_canvas
@@ -1598,11 +1632,11 @@ typedef struct CF_AtlasSubImage
  * @function cf_register_premade_atlas
  * @category draw
  * @brief    Registers a premade atlas within the draw system.
- * @param    png_path   A virtual path to the png_file for the atlas. See [Virtual File System](https://randygaul.github.io/cute_framework/#/topics/virtual_file_system).
+ * @param    png_path   A virtual path to the png_file for the atlas. See [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
  * @remarks  This function is useful if you want to load up atlases into CF. However, internally CF employs
  *           it's own online atlas compiler, so baking atlases is not necessary. This function is here just
  *           for convenience.
- *           
+ *
  *           Call `cf_destroy_texture` on the return value when done.
  * @related  CF_AtlasSubImage cf_register_premade_atlas cf_make_premade_sprite cf_destroy_premade_atlas
  */
@@ -1650,7 +1684,7 @@ struct CF_TextCodeVal
 
 namespace Cute
 {
-	
+
 CF_INLINE void draw_sprite(const CF_Sprite* sprite) { cf_draw_sprite(sprite); }
 CF_INLINE void draw_sprite(const CF_Sprite& sprite) { cf_draw_sprite(&sprite); }
 CF_INLINE void sprite_draw(const CF_Sprite* sprite) { cf_draw_sprite(sprite); }
@@ -1678,9 +1712,9 @@ CF_INLINE void draw_capsule_fill(v2 p0, v2 p1, float r) { cf_draw_capsule_fill2(
 CF_INLINE void draw_tri(v2 p0, v2 p1, v2 p2, float thickness = 1.0f, float chubbiness = 0) { cf_draw_tri(p0, p1, p2, thickness, chubbiness); }
 CF_INLINE void draw_tri_fill(v2 p0, v2 p1, v2 p2, float chubbiness = 0) { cf_draw_tri_fill(p0, p1, p2, chubbiness); }
 CF_INLINE void draw_line(v2 p0, v2 p1, float thickness = 1.0f) { cf_draw_line(p0, p1, thickness); }
-CF_INLINE void draw_polyline(v2* points, int count, float thickness = 1.0f, bool loop = false) { cf_draw_polyline(points, count, thickness, loop); }
-CF_INLINE void draw_polygon_fill(v2* points, int count, float chubbiness) { cf_draw_polygon_fill(points, count, chubbiness); }
-CF_INLINE void draw_polygon_fill_simple(v2* points, int count) { cf_draw_polygon_fill_simple(points, count); }
+CF_INLINE void draw_polyline(const v2* points, int count, float thickness = 1.0f, bool loop = false) { cf_draw_polyline(points, count, thickness, loop); }
+CF_INLINE void draw_polygon_fill(const v2* points, int count, float chubbiness) { cf_draw_polygon_fill(points, count, chubbiness); }
+CF_INLINE void draw_polygon_fill_simple(const v2* points, int count) { cf_draw_polygon_fill_simple(points, count); }
 CF_INLINE void draw_bezier_line(v2 a, v2 c0, v2 b, int iters, float thickness) { cf_draw_bezier_line(a, c0, b, iters, thickness); }
 CF_INLINE void draw_bezier_line(v2 a, v2 c0, v2 c1, v2 b, int iters, float thickness) { cf_draw_bezier_line2(a, c0, c1, b, iters, thickness); }
 CF_INLINE void draw_arrow(v2 a, v2 b, float thickness, float arrow_width) { cf_draw_arrow(a, b, thickness, arrow_width); }
@@ -1723,6 +1757,10 @@ CF_INLINE v2 text_size(const char* text, int num_chars_to_render = -1) { return 
 CF_INLINE void draw_text(const char* text, v2 position, int num_chars_to_render = -1) { cf_draw_text(text, position, num_chars_to_render); }
 
 CF_INLINE void text_effect_register(const char* name, CF_TextEffectFn* fn) { cf_text_effect_register(name, fn); }
+
+CF_INLINE void push_text_id(uint64_t id) { cf_push_text_id(id); }
+CF_INLINE uint64_t pop_text_id() { return cf_pop_text_id(); }
+CF_INLINE uint64_t peek_text_id() { return cf_peek_text_id(); }
 
 CF_INLINE void text_get_markup_info(cf_text_markup_info_fn* fn, const char* text, v2 position, int num_chars_to_draw = -1) { cf_text_get_markup_info(fn, text, position, num_chars_to_draw); }
 CF_INLINE void push_text_effect_active(bool effects_on) { cf_push_text_effect_active(effects_on); }
