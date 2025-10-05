@@ -203,4 +203,5 @@ sprite_frame_count :: #force_inline proc(sprite: ^Sprite) -> c.int {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	make_sprite :: proc(aseprite_path: cstring) -> Sprite ---
+	make_demo_sprite :: proc() -> Sprite ---
 }

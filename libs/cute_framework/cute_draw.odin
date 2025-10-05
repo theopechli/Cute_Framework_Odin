@@ -77,6 +77,7 @@ foreign lib {
 	draw_set_uniform_int :: proc(name: cstring, val: c.int) ---
 	draw_set_uniform_float :: proc(name: cstring, val: f32) ---
 	draw_translate :: proc(w: f32, h: f32) ---
+	draw_translate_v2 :: proc(position: la.Vector2f32) ---
 	draw_scale :: proc(w: f32, h: f32) ---
 	draw_push :: proc() ---
 	draw_pop :: proc() ---

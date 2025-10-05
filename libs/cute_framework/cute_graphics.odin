@@ -313,10 +313,12 @@ foreign lib {
 	shader_directory :: proc(path: cstring) ---
 	shader_on_changed :: proc(on_changed_fn: proc "odin" (path: cstring, udata: rawptr), udata: rawptr) ---
 	make_shader :: proc(vertex_path: cstring, fragment_path: cstring) -> Shader ---
+	destroy_shader :: proc(shader: Shader) ---
 	canvas_defaults :: proc(w: c.int, h: c.int) -> Canvas_Params ---
 	make_canvas :: proc(canvas_params: Canvas_Params) -> Canvas ---
 	canvas_get_target :: proc(canvas: Canvas) -> Texture ---
 	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
+	clear_canvas :: proc(canvas: Canvas) ---
 	make_mesh :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]Vertex_Attribute, attribute_count: i32, vertex_stride: i32) -> Mesh ---
 	mesh_set_instance_buffer :: proc(mesh: Mesh, instance_buffer_size_in_bytes: c.int, instance_stride: c.int) ---
 	destroy_mesh :: proc(mesh: Mesh) ---

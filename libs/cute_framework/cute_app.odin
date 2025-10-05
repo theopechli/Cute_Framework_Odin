@@ -45,4 +45,7 @@ foreign lib {
 	app_get_framerate :: proc() -> f32 ---
 	app_set_msaa :: proc(sample_count: c.int) -> bool ---
 	app_get_canvas :: proc() -> Canvas ---
+	app_set_canvas_size :: proc(w: i32, h: i32) ---
+	app_set_vsync :: proc(true_turn_on_vsync: bool) ---
+	app_set_vsync_mailbox :: proc(true_turn_on_mailbox: bool) ---
 }
