@@ -2,15 +2,13 @@
 
 [Odin](https://odin-lang.org) bindings for [Cute Framework](https://github.com/RandyGaul/cute_framework).
 
-## Example
+## Example App
 
-There is a very simple example inside the `src` folder.
+There is a very simple example app inside the `src` folder.
 
 ### Note
 
-In order to use [ImGui](https://github.com/ocornut/imgui), you need bindings for [cimgui](https://github.com/cimgui/cimgui). The bindings in `./libs/cimgui` are there only to run this example.
-
-Read more at [Cute Framework's documentation](https://randygaul.github.io/cute_framework/#/topics/dear_imgui).
+In order to use [ImGui](https://github.com/ocornut/imgui), you need bindings for [dear_bindings](https://github.com/dearimgui/dear_bindings). The bindings in `./libs/imgui` are from [odin-imgui](https://gitlab.com/L-4/odin-imgui), with slight modifications, and are only there to run this example app.
 
 ## Clone
 
@@ -32,6 +30,12 @@ Execute any of the following commands from the root of the repository.
 
 ### Linux
 
-1. Run `./setup.sh`, which will generate the libraries needed to build and run the above example.
-1. Build with `./build_debug.sh`.
-1. Run with `./run_debug.sh`.
+1. Run `./setup.sh` to generate the libraries needed to build and run the above example app.
+1. Run `./build_debug.sh` to build the app.
+1. Run `./run_debug.sh` to run the app.
+
+### Windows
+
+1. Run `.\setup.bat` to generate the libraries needed to build and run the above example app.
+1. Run `.\build_debug.bat` to build the app.
+1. Run `.\run_debug.bat` to run the app.

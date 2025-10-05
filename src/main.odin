@@ -1,11 +1,13 @@
 package main
 
+import "core:fmt"
 import "core:os"
 import "core:strings"
-import "core:fmt"
+import "core:time"
 
 import cf "libs:cute_framework"
-import imgui "libs:cimgui"
+@(require)
+import imgui "libs:imgui"
 
 main :: proc() {
 	result := cf.make_app(
@@ -16,20 +18,22 @@ main :: proc() {
 		640,
 		480,
 		{.Window_Position_Centered},
-		strings.clone_to_cstring(os.args[0]),
+		strings.clone_to_cstring(os.args[0], context.temp_allocator),
 	)
 	if cf.is_error(result) {
-		fmt.println("Error: ", result.details)
+		fmt.eprintln("CF error:", result.details)
 		return
 	}
-
-	cf.set_target_framerate(60)
 
 	when ODIN_DEBUG {
 		cf.app_init_imgui()
 	}
 
+	frame_time: f64
+
 	for cf.app_is_running() {
+		start := time.tick_now()
+
 		cf.app_update()
 
 		// All your game logic and updates go here...
@@ -38,20 +42,19 @@ main :: proc() {
 				cf.app_signal_shutdown()
 			}
 
-			render_imgui()
+			when ODIN_DEBUG {
+				if imgui.Begin("Stats", nil, {}) {
+					imgui.Text("[%d FPS]", int(cf.app_get_framerate()))
+					imgui.Text("[%f ms]", frame_time)
+				}
+				imgui.End()
+			}
 		}
 
 		cf.app_draw_onto_screen(true)
+
+		frame_time = time.duration_milliseconds(time.tick_since(start))
 	}
 
 	cf.destroy_app()
-}
-
-render_imgui :: proc() {
-	if imgui.begin("Info", nil, {.Always_Auto_Resize}) {
-		if imgui.collapsing_header("Performance", imgui.TREE_NODE_FLAGS_COLLAPSING_HEADER + {.Default_Open}) {
-			imgui.text("FPS: %0.3f", cf.app_get_framerate())
-		}
-	}
-	imgui.end()
 }
