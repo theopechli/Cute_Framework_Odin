@@ -2,28 +2,14 @@ package cute_framework
 
 import "core:c"
 
-Texture :: struct {
-	id: u64,
-}
+Texture  :: struct { id: c.uint64_t }
+Canvas   :: struct { id: c.uint64_t }
+Mesh     :: struct { id: c.uint64_t }
+Material :: struct { id: c.uint64_t }
+Shader   :: struct { id: c.uint64_t }
 
-Canvas :: struct {
-	id: u64,
-}
-
-Mesh :: struct {
-	id: u64,
-}
-
-Material :: struct {
-	id: u64,
-}
-
-Shader :: struct {
-	id: u64,
-}
-
-Pixel_Format :: enum c.int {
-	Invalid = -1,
+PixelFormat :: enum c.int {
+	INVALID = -1,
 	A8_UNORM,
 	R8_UNORM,
 	R8G8_UNORM,
@@ -82,73 +68,98 @@ Pixel_Format :: enum c.int {
 	D32_FLOAT_S8_UINT,
 }
 
-Pixel_Format_Op :: enum c.int {
-	Nearest_Filter,
-	Bilinear_Filter,
-	Render_Target,
-	Alpha_Blending,
+PixelFormatOp :: enum c.int {
+	NEAREST_FILTER,
+	BILINEAR_FILTER,
+	RENDER_TARGET,
+	ALPHA_BLENDING,
 	MSAA,
-	Depth,
+	DEPTH,
 }
 
-Texture_Usage_Flags :: bit_set[Texture_Usage; c.int]
-Texture_Usage :: enum c.int {
-	Sampler,
-	Color_Target,
-	Depth_Stencil_Target,
-	Graphics_Storage_Read,
-	Compute_Storage_Read,
-	Compute_Storage_Write,
+TextureUsageFlags :: distinct bit_set[TextureUsageBits; c.uint32_t]
+TextureUsageBits :: enum c.uint32_t {
+	SAMPLER_BIT,
+	COLOR_TARGET_BIT,
+	DEPTH_STENCIL_TARGET_BIT,
+	GRAPHICS_STORAGE_READ_BIT,
+	COMPUTE_STORAGE_READ_BIT,
+	COMPUTE_STORAGE_WRITE_BIT,
 }
 
 Filter :: enum c.int {
-	Nearest,
-	Linear,
+	NEAREST,
+	LINEAR,
 }
 
-Mip_Filter :: enum c.int {
-	Nearest,
-	Linear,
+MipFilter :: enum c.int {
+	NEAREST,
+	LINEAR,
 }
 
-Wrap_Mode :: enum c.int {
-	Repeat,
-	Clamp_To_Edge,
-	Mirrored_Repeat,
+WrapMode :: enum c.int {
+	REPEAT,
+	CLAMP_TO_EDGE,
+	MIRRORED_REPEAT,
 }
 
-Texture_Params :: struct {
-	pixel_format:     Pixel_Format,
-	usage:            Texture_Usage_Flags,
+TextureParams :: struct {
+	pixel_format:     PixelFormat,
+	usage:            TextureUsageFlags,
 	filter:           Filter,
-	wrap_u:           Wrap_Mode,
-	wrap_v:           Wrap_Mode,
-	mip_filter:       Mip_Filter,
+	wrap_u:           WrapMode,
+	wrap_v:           WrapMode,
+	mip_filter:       MipFilter,
 	width:            c.int,
 	height:           c.int,
 	mip_count:        c.int,
 	generate_mipmaps: bool,
-	mip_lod_bias:     f32,
-	max_anisotropy:   f32,
+	mip_lod_bias:     c.float,
+	max_anisotropy:   c.float,
 	stream:           bool,
 }
 
-Sample_Count :: enum c.int {
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	texture_defaults :: proc(w: c.int, h: c.int) -> TextureParams ---
+	make_texture     :: proc(texture_params: TextureParams) -> Texture ---
+	destroy_texture  :: proc(texture: Texture) ---
+	texture_update   :: proc(texture: Texture, data: rawptr, size: c.int) ---
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	shader_directory  :: proc(path: cstring) ---
+	shader_on_changed :: proc(on_changed_fn: proc "odin" (path: cstring, udata: rawptr), udata: rawptr) ---
+	make_shader       :: proc(vertex_path: cstring, fragment_path: cstring) -> Shader ---
+	destroy_shader    :: proc(shader: Shader) ---
+}
+
+SampleCount :: enum c.int {
 	_1,
 	_2,
 	_4,
 	_8,
 }
 
-Canvas_Params :: struct {
+CanvasParams :: struct {
 	name:                 cstring,
-	target:               Texture_Params,
+	target:               TextureParams,
 	depth_stencil_enable: bool,
-	depth_stencil_target: Texture_Params,
-	sample_count:         Sample_Count,
+	depth_stencil_target: TextureParams,
+	sample_count:         SampleCount,
 }
 
-Vertex_Format :: enum i32 {
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	canvas_defaults                 :: proc(w: c.int, h: c.int) -> CanvasParams ---
+	make_canvas                     :: proc(canvas_params: CanvasParams) -> Canvas ---
+	canvas_get_target               :: proc(canvas: Canvas) -> Texture ---
+	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
+	clear_canvas                    :: proc(canvas: Canvas) ---
+}
+
+VertexFormat :: enum c.int {
 	INT,
 	INT2,
 	INT3,
@@ -181,160 +192,155 @@ Vertex_Format :: enum i32 {
 	HALF4,
 }
 
-Vertex_Attribute :: struct {
+VertexAttribute :: struct {
 	name:         cstring,
-	format:       Vertex_Format,
-	offset:       i32,
+	format:       VertexFormat,
+	offset:       c.int,
 	per_instance: bool,
-}
-
-Cull_Mode :: enum i32 {
-	None,
-	Front,
-	Back,
-}
-
-Compare_Function :: enum i32 {
-	Always,
-	Never,
-	Less_Than,
-	Equal,
-	Not_Equal,
-	Less_Than_Or_Equal,
-	Greater_Than,
-	Greater_Than_Or_Equal,
-}
-
-Stencil_Op :: enum i32 {
-	Keep,
-	Zero,
-	Replace,
-	Increment_Clamp,
-	Decrement_Clamp,
-	Invert,
-	Increment_Wrap,
-	Decrement_Wrap,
-}
-
-Blend_Op :: enum i32 {
-	Add,
-	Subtract,
-	Reverse_Subtract,
-	Min,
-	Max,
-}
-
-Blend_Factor :: enum i32 {
-	Zero,
-	One,
-	Src_Color,
-	One_Minus_Src_Color,
-	Dst_Color,
-	One_Minus_Dst_Color,
-	Src_Alpha,
-	One_Minus_Src_Alpha,
-	Dst_Alpha,
-	One_Minus_Dst_Alpha,
-	Constant_Color,
-	One_Minus_Constant_Color,
-	Src_Alpha_Saturate,
-}
-
-Primitive_Type :: enum i32 {
-	Triangle_List,
-	Triangle_Strip,
-	Line_List,
-	Line_Strip,
-}
-
-Stencil_Function :: struct {
-	compare: Compare_Function,
-	fail_op: Stencil_Op,
-	depth_fail_op: Stencil_Op,
-	pass_op: Stencil_Op,
-}
-
-Stencil_Params :: struct {
-	enabled: bool,
-	read_mask: u8,
-	write_mask: u8,
-	reference: u8,
-	front: Stencil_Function,
-	back: Stencil_Function,
-}
-
-Blend_State :: struct {
-	enabled: bool,
-	pixel_format: Pixel_Format,
-	write_R_enabled: bool,
-	write_G_enabled: bool,
-	write_B_enabled: bool,
-	write_A_enabled: bool,
-	rgb_op: Blend_Op,
-	rgb_src_blend_factor: Blend_Factor,
-	rgb_dst_blend_factor: Blend_Factor,
-	alpha_op: Blend_Op,
-	alpha_src_blend_factor: Blend_Factor,
-	alpha_dst_blend_factor: Blend_Factor,
-}
-
-Render_State :: struct {
-	primitive_type: Primitive_Type,
-	cull_mode: Cull_Mode,
-	blend: Blend_State,
-	depth_compare: Compare_Function,
-	depth_write_enabled: bool,
-	stencil: Stencil_Params,
-	depth_bias_constant_factor: f32,
-	depth_bias_clamp: f32,
-	depth_bias_slope_factor: f32,
-	enable_depth_bias: bool,
-	enable_depth_clip: bool,
-}
-
-Uniform_Type :: enum c.int {
-	Unknown = -1,
-	Float,
-	Float2,
-	Float3,
-	Float4,
-	Int,
-	Int2,
-	Int4,
-	Mat4,
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	texture_defaults :: proc(w: c.int, h: c.int) -> Texture_Params ---
-	make_texture :: proc(texture_params: Texture_Params) -> Texture ---
-	destroy_texture :: proc(texture: Texture) ---
-	texture_update :: proc(texture: Texture, data: rawptr, size: c.int) ---
-	shader_directory :: proc(path: cstring) ---
-	shader_on_changed :: proc(on_changed_fn: proc "odin" (path: cstring, udata: rawptr), udata: rawptr) ---
-	make_shader :: proc(vertex_path: cstring, fragment_path: cstring) -> Shader ---
-	destroy_shader :: proc(shader: Shader) ---
-	canvas_defaults :: proc(w: c.int, h: c.int) -> Canvas_Params ---
-	make_canvas :: proc(canvas_params: Canvas_Params) -> Canvas ---
-	canvas_get_target :: proc(canvas: Canvas) -> Texture ---
-	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
-	clear_canvas :: proc(canvas: Canvas) ---
-	make_mesh :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]Vertex_Attribute, attribute_count: i32, vertex_stride: i32) -> Mesh ---
-	mesh_set_instance_buffer :: proc(mesh: Mesh, instance_buffer_size_in_bytes: c.int, instance_stride: c.int) ---
-	destroy_mesh :: proc(mesh: Mesh) ---
-	mesh_update_vertex_data :: proc(mesh: Mesh, data: rawptr, count: i32) ---
-	mesh_update_instance_data :: proc(mesh: Mesh, data: rawptr, count: i32) ---
-	render_state_defaults :: proc() -> Render_State ---
-	make_material :: proc() -> Material ---
-	destroy_material :: proc(material: Material) ---
-	material_set_render_state :: proc(material: Material, render_state: Render_State) ---
-	material_set_uniform_vs :: proc(material: Material, name: cstring, data: rawptr, type: Uniform_Type, array_length: i32) ---
-	material_set_uniform_fs :: proc(material: Material, name: cstring, data: rawptr, type: Uniform_Type, array_length: i32) ---
-	clear_color :: proc(r: f32, g: f32, b: f32, a: f32) ---
-	apply_canvas :: proc(canvas: Canvas, clear: bool) ---
-	apply_viewport :: proc(x: i32, y: i32, w: i32, h: i32) ---
-	apply_mesh :: proc(mesh: Mesh) ---
-	apply_shader :: proc(shader: Shader, material: Material) ---
-	draw_elements :: proc() ---
-	commit :: proc() ---
+	make_mesh                 :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]VertexAttribute, attribute_count: c.int, vertex_stride: c.int) -> Mesh ---
+	mesh_set_instance_buffer  :: proc(mesh: Mesh, instance_buffer_size_in_bytes: c.int, instance_stride: c.int) ---
+	destroy_mesh              :: proc(mesh: Mesh) ---
+	mesh_update_vertex_data   :: proc(mesh: Mesh, data: rawptr, count: c.int) ---
+	mesh_update_instance_data :: proc(mesh: Mesh, data: rawptr, count: c.int) ---
+}
+
+CullMode :: enum c.int {
+	NONE,
+	FRONT,
+	BACK,
+}
+
+CompareFunction :: enum c.int {
+	ALWAYS,
+	NEVER,
+	LESS_THAN,
+	EQUAL,
+	NOT_EQUAL,
+	LESS_THAN_OR_EQUAL,
+	GREATER_THAN,
+	GREATER_THAN_OR_EQUAL,
+}
+
+StencilOp :: enum c.int {
+	KEEP,
+	ZERO,
+	REPLACE,
+	INCREMENT_CLAMP,
+	DECREMENT_CLAMP,
+	INVERT,
+	INCREMENT_WRAP,
+	DECREMENT_WRAP,
+}
+
+BlendOp :: enum c.int {
+	ADD,
+	SUBTRACT,
+	REVERSE_SUBTRACT,
+	MIN,
+	MAX,
+}
+
+BlendFactor :: enum c.int {
+	ZERO,
+	ONE,
+	SRC_COLOR,
+	ONE_MINUS_SRC_COLOR,
+	DST_COLOR,
+	ONE_MINUS_DST_COLOR,
+	SRC_ALPHA,
+	ONE_MINUS_SRC_ALPHA,
+	DST_ALPHA,
+	ONE_MINUS_DST_ALPHA,
+	CONSTANT_COLOR,
+	ONE_MINUS_CONSTANT_COLOR,
+	SRC_ALPHA_SATURATE,
+}
+
+PrimitiveType :: enum c.int {
+	TRIANGLELIST,
+	TRIANGLESTRIP,
+	LINELIST,
+	LINESTRIP,
+}
+
+StencilFunction :: struct {
+	compare:       CompareFunction,
+	fail_op:       StencilOp,
+	depth_fail_op: StencilOp,
+	pass_op:       StencilOp,
+}
+
+StencilParams :: struct {
+	enabled:    bool,
+	read_mask:  c.uint8_t,
+	write_mask: c.uint8_t,
+	reference:  c.uint8_t,
+	front:      StencilFunction,
+	back:       StencilFunction,
+}
+
+BlendState :: struct {
+	enabled:                bool,
+	pixel_format:           PixelFormat,
+	write_R_enabled:        bool,
+	write_G_enabled:        bool,
+	write_B_enabled:        bool,
+	write_A_enabled:        bool,
+	rgb_op:                 BlendOp,
+	rgb_src_blend_factor:   BlendFactor,
+	rgb_dst_blend_factor:   BlendFactor,
+	alpha_op:               BlendOp,
+	alpha_src_blend_factor: BlendFactor,
+	alpha_dst_blend_factor: BlendFactor,
+}
+
+RenderState :: struct {
+	primitive_type:             PrimitiveType,
+	cull_mode:                  CullMode,
+	blend:                      BlendState,
+	depth_compare:              CompareFunction,
+	depth_write_enabled:        bool,
+	stencil:                    StencilParams,
+	depth_bias_constant_factor: c.float,
+	depth_bias_clamp:           c.float,
+	depth_bias_slope_factor:    c.float,
+	enable_depth_bias:          bool,
+	enable_depth_clip:          bool,
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	render_state_defaults :: proc() -> RenderState ---
+}
+
+UniformType :: enum c.int {
+	UNKNOWN = -1,
+	FLOAT,
+	FLOAT2,
+	FLOAT3,
+	FLOAT4,
+	INT,
+	INT2,
+	INT4,
+	MAT4,
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	make_material             :: proc() -> Material ---
+	destroy_material          :: proc(material: Material) ---
+	material_set_render_state :: proc(material: Material, render_state: RenderState) ---
+	material_set_uniform_vs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
+	material_set_uniform_fs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
+	clear_color               :: proc(red: c.float, green: c.float, blue: c.float, alpha: c.float) ---
+	apply_canvas              :: proc(canvas: Canvas, clear: bool) ---
+	apply_viewport            :: proc(x: c.int, y: c.int, w: c.int, h: c.int) ---
+	apply_mesh                :: proc(mesh: Mesh) ---
+	apply_shader              :: proc(shader: Shader, material: Material) ---
+	draw_elements             :: proc() ---
+	commit                    :: proc() ---
 }

@@ -3,145 +3,102 @@ package cute_framework
 import "core:c"
 import la "core:math/linalg"
 
-Sin_Cos :: la.Vector2f32
+V2 :: distinct [2]c.float
+
+SinCos :: struct {
+	s: c.float,
+	c: c.float,
+}
 
 Transform :: struct {
-	r: Sin_Cos,
-	p: la.Vector2f32,
+	r: SinCos,
+	p: V2,
 }
 
 Circle :: struct {
-	p: la.Vector2f32,
-	r: f32,
+	p: V2,
+	r: c.float,
 }
 
-AABB :: struct {
-	lo: la.Vector2f32,
-	hi: la.Vector2f32,
+Aabb :: struct {
+	min: V2,
+	max: V2,
 }
 
 Rect :: struct {
-	x: c.int,
-	y: c.int,
-	w: c.int,
-	h: c.int,
+	x, y, w, h: c.int,
 }
 
 POLY_MAX_VERTS :: 8
 
 Poly :: struct {
-	count: i32,
-	verts: [POLY_MAX_VERTS]la.Vector2f32,
-	norms: [POLY_MAX_VERTS]la.Vector2f32,
+	count: c.int,
+	verts: [POLY_MAX_VERTS]V2,
+	norms: [POLY_MAX_VERTS]V2,
 }
 
 Capsule :: struct {
-	a: la.Vector2f32,
-	b: la.Vector2f32,
-	r: f32,
+	a: V2,
+	b: V2,
+	r: c.float,
 }
 
 Manifold :: struct {
 	count:          c.int,
-	depths:         [2]f32,
-	contact_points: [2]la.Vector2f32,
-	n:              la.Vector2f32,
+	depths:         [2]c.float,
+	contact_points: [2]V2,
+	n:              V2,
 }
 
-safe_norm :: #force_inline proc "contextless" (a: la.Vector2f32) -> la.Vector2f32 {
-	sq := la.dot(a, a)
-	return sq != 0.0 ? a / la.sqrt(sq) : {0.0, 0.0}
-}
+safe_norm :: #force_inline proc "c" (a: V2) -> V2 { sq := la.dot(a, a); return sq != 0.0 ? a / la.sqrt(sq) : V2 { 0.0, 0.0 } }
 
-bezier :: #force_inline proc "contextless" (a: la.Vector2f32, c0: la.Vector2f32, b: la.Vector2f32, t: f32) -> la.Vector2f32 {
-	return la.lerp(la.lerp(a, c0, t), la.lerp(c0, b, t), t)
-}
+bezier :: #force_inline proc "c" (a: V2, c0: V2, b: V2, t: c.float) -> V2 { return la.lerp(la.lerp(a, c0, t), la.lerp(c0, b, t), t) }
 
-sincos_f :: #force_inline proc "contextless" (radians: f32) -> Sin_Cos {
-	return Sin_Cos {la.sin(radians), la.cos(radians)}
-}
+sincos_f :: #force_inline proc "c" (radians: c.float) -> SinCos { return SinCos { s = la.sin(radians), c = la.cos(radians) } }
+sincos   :: #force_inline proc "c" () -> SinCos { return SinCos { s = 1.0, c = 0.0 } }
 
-sincos :: #force_inline proc "contextless" () -> Sin_Cos {
-	return Sin_Cos {1.0, 0.0}
-}
+make_transform          :: #force_inline proc "c" () -> Transform { return Transform { p = V2 { 0.0, 0.0 }, r = sincos() } }
+make_aabb               :: #force_inline proc "c" (min: V2, max: V2) -> Aabb { return Aabb { min = min, max = max } }
+make_aabb_pos_w_h       :: #force_inline proc "c" (pos: V2, w: c.float, h: c.float) -> Aabb { he := V2 {w, h} * 0.5; return Aabb { min = pos - he, max = pos + he } }
+make_aabb_from_top_left :: #force_inline proc "c" (top_left: V2, w: c.float, h: c.float) -> Aabb { return make_aabb(top_left + V2 { 0.0, -h }, top_left + V2 { w, 0.0 }) }
+expand_aabb             :: #force_inline proc "c" (aabb: Aabb, v: V2) -> Aabb { return make_aabb(aabb.min - v, aabb.max + v) }
 
-make_transform :: #force_inline proc "contextless" () -> Transform {
-	return Transform {
-		p = {0, 0},
-		r = sincos(),
-	}
-}
+center       :: #force_inline proc "c" (bb: Aabb) -> V2 { return (bb.min + bb.max) * 0.5 }
+top_left     :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.min.x, bb.max.y } }
+top_right    :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.max.x, bb.max.y } }
+bottom_left  :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.min.x, bb.min.y } }
+bottom_right :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.max.x, bb.min.y } }
 
-make_aabb :: #force_inline proc "contextless" (lo: la.Vector2f32, hi: la.Vector2f32) -> AABB {
-	return AABB {
-		lo = lo,
-		hi = hi,
-	}
-}
-
-make_aabb_pos_w_h :: #force_inline proc "contextless" (pos: la.Vector2f32, w: f32, h: f32) -> AABB {
-	bb: AABB
-	he := la.Vector2f32 {w, h} * 0.5
-	bb.lo = pos - he
-	bb.hi = pos + he
-	return bb
-}
-
-make_aabb_from_top_left :: #force_inline proc "contextless" (top_left: la.Vector2f32, w: f32, h: f32) -> AABB {
-	return make_aabb(top_left + {0.0, -h}, top_left + {w, 0.0})
-}
-
-expand_aabb :: #force_inline proc "contextless" (aabb: AABB, v: la.Vector2f32) -> AABB {
-	return make_aabb(aabb.lo - v, aabb.hi + v)
-}
-
-center :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
-	return (bb.lo + bb.hi) * 0.5
-}
-
-top_left :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
-	return {bb.lo.x, bb.hi.y}
-}
-
-top_right :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
-	return {bb.hi.x, bb.hi.y}
-}
-
-bottom_left :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
-	return {bb.lo.x, bb.lo.y}
-}
-
-bottom_right :: #force_inline proc "contextless" (bb: AABB) -> la.Vector2f32 {
-	return {bb.hi.x, bb.lo.y}
-}
-
-Shape_Types :: bit_set[Shape_Type; c.int]
-Shape_Type :: enum c.int {
-	None,
-	Circle,
+ShapeType :: enum c.int {
+	NONE,
+	CIRCLE,
 	AABB,
-	Capsule,
-	Poly,
+	CAPSULE,
+	POLY,
 }
 
-TOI_Result :: struct {
-	hit: c.int,
-	toi: f32,
-	n: la.Vector2f32,
-	p: la.Vector2f32,
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	norms                       :: proc(verts: [^]V2, norms: [^]V2, count: c.int) ---
+	aabb_to_aabb                :: proc(A: Aabb, B: Aabb) -> bool ---
+	aabb_to_capsule             :: proc(A: Aabb, B: Capsule) -> bool ---
+	circle_to_circle_manifold   :: proc(A: Circle, B: Circle) -> Manifold ---
+	circle_to_capsule_manifold  :: proc(A: Circle, B: Capsule) -> Manifold ---
+	aabb_to_aabb_manifold       :: proc(A: Aabb, B: Aabb) -> Manifold ---
+	aabb_to_capsule_manifold    :: proc(A: Aabb, B: Capsule) -> Manifold ---
+	capsule_to_capsule_manifold :: proc(A: Capsule, B: Capsule) -> Manifold ---
+}
+
+ToiResult :: struct {
+	hit:        c.int,
+	toi:        c.float,
+	n:          V2,
+	p:          V2,
 	iterations: c.int,
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	norms :: proc(verts: [^]la.Vector2f32, norms: [^]la.Vector2f32, count: c.int) ---
-	aabb_to_aabb :: proc(a: AABB, b: AABB) -> bool ---
-	aabb_to_capsule :: proc(a: AABB, b: Capsule) -> bool ---
-	aabb_to_aabb_manifold :: proc(a: AABB, b: AABB) -> Manifold ---
-	aabb_to_capsule_manifold :: proc(a: AABB, b: Capsule) -> Manifold ---
-	capsule_to_capsule_manifold :: proc(a: Capsule, b: Capsule) -> Manifold ---
-	circle_to_circle_manifold :: proc(a: Circle, b: Circle) -> Manifold ---
-	circle_to_capsule_manifold :: proc(a: Circle, b: Capsule) -> Manifold ---
-	toi :: proc(a: rawptr, shape_type_a: Shape_Type, transform_a: ^Transform, vel_a: la.Vector2f32, b: rawptr, shape_type_b: Shape_Type, transform_b: ^Transform, vel_b: la.Vector2f32, use_radius: c.int) -> TOI_Result ---
-	collide :: proc(a: rawptr, ax: ^Transform, type_a: Shape_Type, b: rawptr, bx: ^Transform, type_b: Shape_Type, m: ^Manifold) ---
+	toi     :: proc(A: rawptr, typeA: ShapeType, ax_ptr: ^Transform, vA: V2, B: rawptr, typeB: ShapeType, bx_ptr: ^Transform, vB: V2, use_radius: c.int) -> ToiResult ---
+	collide :: proc(A: rawptr, ax: ^Transform, typeA: ShapeType, B: rawptr, bx: ^Transform, typeB: ShapeType, m: ^Manifold) ---
 }

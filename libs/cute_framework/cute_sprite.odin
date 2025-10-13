@@ -1,57 +1,58 @@
 package cute_framework
 
+import "base:runtime"
+
 import "core:c"
-import la "core:math/linalg"
 
 Frame :: struct {
-	id:    u64,
-	delay: f32,
+	id:    c.uint64_t,
+	delay: c.float,
 }
 
-Play_Direction :: enum c.int {
-	Forwards,
-	Backwards,
-	Ping_Pong,
+PlayDirection :: enum c.int {
+	FORWARDS,
+	BACKWARDS,
+	PINGPONG,
 }
 
 Animation :: struct {
 	name:           cstring,
-	play_direction: Play_Direction,
+	play_direction: PlayDirection,
 	frames:         [^]Frame,
 	frame_offset:   c.int,
 }
 
-Sprite_Slice :: struct {
+SpriteSlice :: struct {
 	frame_index: c.int,
 	name:        cstring,
-	box:         AABB,
+	box:         Aabb,
 }
 
 Sprite :: struct {
 	name:                  cstring,
 	w:                     c.int,
 	h:                     c.int,
-	scale:                 la.Vector2f32,
-	offset:                la.Vector2f32,
-	pivots:                [^]la.Vector2f32,
-	slices:                [^]Sprite_Slice,
-	opacity:               f32,
+	scale:                 V2,
+	offset:                V2,
+	pivots:                [^]V2,
+	slices:                [^]SpriteSlice,
+	opacity:               c.float,
 	frame_index:           c.int,
 	loop_count:            c.int,
-	play_speed_multiplier: f32,
+	play_speed_multiplier: c.float,
 	paused:                bool,
 	loop:                  bool,
-	t:                     f32,
-	easy_sprite_id:        u64,
-	play_direction:        Play_Direction,
+	t:                     c.float,
+	easy_sprite_id:        c.uint64_t,
+	play_direction:        PlayDirection,
 	animation:             ^Animation,
 	animations:            ^[^]Animation,
 	transform:             Transform,
 }
 
-sprite_defaults :: #force_inline proc "contextless" () -> Sprite {
+sprite_defaults :: #force_inline proc "c" () -> Sprite {
 	return Sprite {
-		scale                 = {1, 1},
+		scale                 = V2 { 1.0, 1.0 },
 		opacity               = 1.0,
 		play_speed_multiplier = 1.0,
 		transform             = make_transform(),
@@ -59,17 +60,38 @@ sprite_defaults :: #force_inline proc "contextless" () -> Sprite {
 	}
 }
 
-sprite_get_scale :: #force_inline proc(sprite: ^Sprite) -> la.Vector2f32 {
-	assert(sprite != nil)
-	return sprite.scale
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	make_sprite      :: proc(aseprite_path: cstring) -> Sprite ---
+	make_demo_sprite :: proc() -> Sprite ---
 }
 
-sprite_set_scale :: #force_inline proc(sprite: ^Sprite, scale: la.Vector2f32) {
+sprite_get_scale_x :: #force_inline proc "c" (sprite: ^Sprite) -> c.float {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	return sprite.scale.x
+}
+
+sprite_get_scale_y :: #force_inline proc "c" (sprite: ^Sprite) -> c.float {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	return sprite.scale.y
+}
+
+sprite_set_scale   :: #force_inline proc "c" (sprite: ^Sprite, scale: V2) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	sprite.scale = scale
 }
 
-sprite_update :: #force_inline proc(sprite: ^Sprite) {
+sprite_set_loop    :: #force_inline proc "c" (sprite: ^Sprite, loop: bool) {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	sprite.loop = loop
+}
+
+sprite_update :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	if sprite.paused {
 		return
@@ -79,9 +101,9 @@ sprite_update :: #force_inline proc(sprite: ^Sprite) {
 	}
 
 	sprite.t += DELTA_TIME * sprite.play_speed_multiplier
-	frame_count: i32 = alen(sprite.animation.frames)
+	frame_count: c.int = alen(sprite.animation.frames)
 	direction := sprite.play_direction
-	if direction == .Forwards {
+	if direction == .FORWARDS {
 		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
 			sprite.frame_index += 1
 			sprite.t = 0
@@ -94,7 +116,7 @@ sprite_update :: #force_inline proc(sprite: ^Sprite) {
 				}
 			}
 		}
-	} else if direction == .Backwards {
+	} else if direction == .BACKWARDS {
 		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
 			sprite.frame_index -= 1
 			sprite.t = 0
@@ -107,7 +129,7 @@ sprite_update :: #force_inline proc(sprite: ^Sprite) {
 				}
 			}
 		}
-	} else if direction == .Ping_Pong {
+	} else if direction == .PINGPONG {
 		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
 			sprite.t = 0
 			if sprite.loop_count % 2 == 0 {
@@ -131,12 +153,8 @@ sprite_update :: #force_inline proc(sprite: ^Sprite) {
 	}
 }
 
-sprite_set_loop :: #force_inline proc(sprite: ^Sprite, loop: bool) {
-	assert(sprite != nil)
-	sprite.loop = loop
-}
-
-sprite_reset :: #force_inline proc(sprite: ^Sprite) {
+sprite_reset :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	sprite.paused = false
 	sprite.frame_index = 0
@@ -147,7 +165,8 @@ sprite_reset :: #force_inline proc(sprite: ^Sprite) {
 	}
 }
 
-sprite_play :: #force_inline proc(sprite: ^Sprite, animation: cstring) {
+sprite_play :: #force_inline proc "c" (sprite: ^Sprite, animation: cstring) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	if sprite.animations == nil {
 		return
@@ -157,51 +176,55 @@ sprite_play :: #force_inline proc(sprite: ^Sprite, animation: cstring) {
 	sprite_reset(sprite)
 }
 
-
-sprite_pause :: #force_inline proc(sprite: ^Sprite) {
+sprite_pause :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	sprite.paused = true
 }
 
-sprite_unpause :: #force_inline proc(sprite: ^Sprite) {
+sprite_unpause :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	sprite.paused = false
 }
 
-sprite_toggle_pause :: #force_inline proc(sprite: ^Sprite) {
+sprite_toggle_pause :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	sprite.paused = !sprite.paused
 }
 
-sprite_will_finish :: #force_inline proc(sprite: ^Sprite) -> bool {
+sprite_flip_x :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	sprite.scale.x *= -1.0
+}
+
+sprite_flip_y :: #force_inline proc "c" (sprite: ^Sprite) {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	sprite.scale.y *= -1.0
+}
+
+sprite_frame_count :: #force_inline proc "c" (sprite: ^Sprite) -> c.int {
+	context = runtime.default_context()
+	assert(sprite != nil)
+	if sprite.animation == nil {
+		return 0
+	}
+	return alen(sprite.animation.frames)
+}
+
+sprite_will_finish :: #force_inline proc "c" (sprite: ^Sprite) -> bool {
+	context = runtime.default_context()
 	assert(sprite != nil)
 	// TODO -- Backwards and pingpong.
-	if sprite.animation == nil do return false
+	if sprite.animation == nil {
+		return false
+	}
 	if sprite.frame_index == sprite_frame_count(sprite) - 1 {
 		return sprite.t + DELTA_TIME * sprite.play_speed_multiplier >= sprite.animation.frames[sprite.frame_index].delay
 	} else {
 		return false
 	}
-}
-
-sprite_flip_x :: #force_inline proc(sprite: ^Sprite) {
-	assert(sprite != nil)
-	sprite.scale.x *= -1.0
-}
-
-sprite_flip_y :: #force_inline proc(sprite: ^Sprite) {
-	assert(sprite != nil)
-	sprite.scale.y *= -1.0
-}
-
-sprite_frame_count :: #force_inline proc(sprite: ^Sprite) -> c.int {
-	assert(sprite != nil)
-	if sprite.animation == nil do return 0
-	return alen(sprite.animation.frames)
-}
-
-@(link_prefix = "cf_", default_calling_convention = "c")
-foreign lib {
-	make_sprite :: proc(aseprite_path: cstring) -> Sprite ---
-	make_demo_sprite :: proc() -> Sprite ---
 }

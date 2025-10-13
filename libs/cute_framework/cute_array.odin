@@ -2,18 +2,18 @@ package cute_framework
 
 import "core:c"
 
-A_Hdr :: struct {
+Ahdr :: struct {
 	size:      c.int,
 	capacity:  c.int,
 	is_static: bool,
 	data:      cstring,
-	cookie:    u32,
+	cookie:    c.uint32_t,
 }
 
-ahdr :: #force_inline proc "contextless" (a: [^]$T) -> ^A_Hdr {
-	return ([^]A_Hdr)(a)[-1:]
+ahdr :: #force_inline proc "c" (a: [^]$T) -> ^Ahdr {
+	return ([^]Ahdr)(a)[-1:]
 }
 
-alen :: #force_inline proc "contextless" (a: [^]$T) -> c.int {
+alen :: #force_inline proc "c" (a: [^]$T) -> c.int {
 	return ahdr(a).size
 }

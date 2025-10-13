@@ -17,7 +17,7 @@ main :: proc() {
 		0,
 		640,
 		480,
-		{.Window_Position_Centered},
+		{.WINDOW_POS_CENTERED_BIT},
 		strings.clone_to_cstring(os.args[0], context.temp_allocator),
 	)
 	if cf.is_error(result) {
@@ -38,7 +38,7 @@ main :: proc() {
 
 		// All your game logic and updates go here...
 		{
-			if cf.key_just_pressed(.Escape) {
+			if cf.key_just_pressed(.KEY_ESCAPE) {
 				cf.app_signal_shutdown()
 			}
 

@@ -1,7 +1,5 @@
 package cute_framework
 
-// @todo: Support Windows.
-// @todo: Support Darwin.
 when ODIN_OS == .Windows {
 	@(export) foreign import lib {
 		"./windows/cute.lib",

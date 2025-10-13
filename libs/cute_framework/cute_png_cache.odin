@@ -4,7 +4,7 @@ import "core:c"
 
 PNG :: struct {
 	path: cstring,
-	id:   u64,
+	id:   c.uint64_t,
 	pix:  ^Pixel,
 	w:    c.int,
 	h:    c.int,
