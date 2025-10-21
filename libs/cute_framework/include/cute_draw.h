@@ -30,6 +30,27 @@ extern "C" {
  */
 CF_API void CF_CALL cf_draw_sprite(const CF_Sprite* sprite);
 
+
+/**
+* @function cf_draw_sprite_9_slice
+* @category draw
+* @brief    Draws a sprite using 9 slice, the top, left, right and bottom sides will be stretched.
+*           if no center patch uvs are defined then this defaults back to cf_draw_sprite
+* @param    sprite     The sprite.
+* @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
+*/
+CF_API void CF_CALL cf_draw_sprite_9_slice(const CF_Sprite* sprite);
+
+/**
+* @function cf_draw_sprite_9_slice_tiled
+* @category draw
+* @brief    Draws a sprite using 9 slice, the top, left, right and bottom will be tiled.
+*           if no center patch uvs are defined then this defaults back to cf_draw_sprite
+* @param    sprite     The sprite.
+* @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
+*/
+CF_API void CF_CALL cf_draw_sprite_9_slice_tiled(const CF_Sprite* sprite);
+
 /**
  * @function cf_draw_prefetch
  * @category draw
@@ -808,7 +829,10 @@ CF_API CF_V2 CF_CALL cf_text_size(const char* text, int num_chars_to_draw);
  * @param    position           The top-left corner of the text.
  * @param    num_chars_to_draw  The number of characters to draw `text`. Use -1 to draw the whole string.
  * @remarks  `num_chars_to_draw` is a great way to control how many characters to draw for implementing a typewriter style effect.
- * @related  cf_make_font cf_draw_text cf_text_effect_register cf_draw_to cf_app_draw_onto_screen
+ *
+ *           The characters in a markup (e.g: `<wave>`) do not contribute to the total number of characters rendered (`num_chars_to_draw`).
+ *           You can use `cf_text_without_markups` to strip all markups from a string.
+ * @related  cf_make_font cf_draw_text cf_text_effect_register cf_text_without_markups
  */
 CF_API void CF_CALL cf_draw_text(const char* text, CF_V2 position, int num_chars_to_draw /*= -1*/);
 
@@ -864,6 +888,9 @@ typedef struct CF_TextEffect
 	/* @member Name of this effect, as registered by `cf_text_effect_register`. */
 	const char* effect_name;
 
+	/* @member The plain text without any markups. */
+	const char* text_without_markups;
+
 	/* @member True if the text effect just started, useful for initialing things. */
 	bool on_begin;
 
@@ -873,7 +900,7 @@ typedef struct CF_TextEffect
 	/* @member UTF8 codepoint of the current character. */
 	int character;
 
-	/* @member The index into the string in `cf_draw_text` currently affected. */
+	/* @member The index into the string in `cf_draw_text` currently affected. Take note, this is the version stripped of all markups (`text_without_markups`). */
 	int index_into_string;
 
 	/* @member Starts at 0 and increments for each character affected. */
@@ -1089,9 +1116,21 @@ typedef void (cf_text_markup_info_fn)(const char* text, CF_MarkupInfo info, cons
  * @param    num_chars_to_draw  The number of characters to draw `text`. Use -1 to draw the whole string.
  * @remarks  The callback `fn` is invoked once per markup within the renderable `text`. If you wish to fetch any of the markup metadata
  *           you may use `cf_text_effect_get_number`, `cf_text_effect_get_color`, or `cf_text_effect_get_string` by passing in the `fx` pointer to each.
- * @related  CF_TextEffect CF_MarkupInfo cf_text_markup_info_fn cf_text_get_markup_info
+ *
+ *           The characters in a markup (e.g: `<wave>`) do not contribute to the total number of characters rendered (`num_chars_to_draw`).
+ *           You can use `cf_text_without_markups` to strip all markups from a string.
+ * @related  CF_TextEffect CF_MarkupInfo cf_text_markup_info_fn cf_text_get_markup_info cf_text_without_markups
  */
 CF_API void CF_CALL cf_text_get_markup_info(cf_text_markup_info_fn* fn, const char* text, CF_V2 position, int num_chars_to_draw /*= -1*/);
+
+/**
+ * @function cf_text_without_markups
+ * @category text
+ * @brief    Retrieves the plain text, stripped of all markups.
+ * @param    text               The renderable text.
+ * @related  cf_draw_text cf_text_get_markup_info
+ */
+CF_API const char* CF_CALL cf_text_without_markups(const char* text);
 
 /**
  * @function cf_push_text_effect_active
@@ -1689,6 +1728,14 @@ CF_INLINE void draw_sprite(const CF_Sprite* sprite) { cf_draw_sprite(sprite); }
 CF_INLINE void draw_sprite(const CF_Sprite& sprite) { cf_draw_sprite(&sprite); }
 CF_INLINE void sprite_draw(const CF_Sprite* sprite) { cf_draw_sprite(sprite); }
 CF_INLINE void sprite_draw(const CF_Sprite& sprite) { cf_draw_sprite(&sprite); }
+CF_INLINE void draw_sprite_9_slice(const CF_Sprite* sprite) { cf_draw_sprite_9_slice(sprite); }
+CF_INLINE void draw_sprite_9_slice(const CF_Sprite& sprite) { cf_draw_sprite_9_slice(&sprite); }
+CF_INLINE void sprite_draw_9_slice(const CF_Sprite* sprite) { cf_draw_sprite_9_slice(sprite); }
+CF_INLINE void sprite_draw_9_slice(const CF_Sprite& sprite) { cf_draw_sprite_9_slice(&sprite); }
+CF_INLINE void draw_sprite_9_slice_tiled(const CF_Sprite* sprite) { cf_draw_sprite_9_slice_tiled(sprite); }
+CF_INLINE void draw_sprite_9_slice_tiled(const CF_Sprite& sprite) { cf_draw_sprite_9_slice_tiled(&sprite); }
+CF_INLINE void sprite_draw_9_slice_tiled(const CF_Sprite* sprite) { cf_draw_sprite_9_slice_tiled(sprite); }
+CF_INLINE void sprite_draw_9_slice_tiled(const CF_Sprite& sprite) { cf_draw_sprite_9_slice_tiled(&sprite); }
 CF_INLINE void draw_quad(CF_Aabb bb, float thickness = 1.0f, float chubbiness = 0) { cf_draw_quad(bb, thickness, chubbiness); }
 CF_INLINE void draw_quad(v2 p0, v2 p1, v2 p2, v2 p3, float thickness = 1.0f, float chubbiness = 0) { cf_draw_quad2(p0, p1, p2, p3, thickness, chubbiness); }
 CF_INLINE void draw_quad_fill(CF_Aabb bb, float chubbiness = 0) { cf_draw_quad_fill(bb, chubbiness); }
@@ -1763,6 +1810,7 @@ CF_INLINE uint64_t pop_text_id() { return cf_pop_text_id(); }
 CF_INLINE uint64_t peek_text_id() { return cf_peek_text_id(); }
 
 CF_INLINE void text_get_markup_info(cf_text_markup_info_fn* fn, const char* text, v2 position, int num_chars_to_draw = -1) { cf_text_get_markup_info(fn, text, position, num_chars_to_draw); }
+CF_INLINE const char* text_without_markups(const char* text) { return cf_text_without_markups(text); }
 CF_INLINE void push_text_effect_active(bool effects_on) { cf_push_text_effect_active(effects_on); }
 CF_INLINE bool pop_text_effect_active() { return cf_pop_text_effect_active(); }
 CF_INLINE bool peek_text_effect_active() { return cf_peek_text_effect_active(); }

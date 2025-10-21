@@ -53,7 +53,6 @@ extern "C" {
  *                 }
  *             }
  *         }
- *         cf_commit();
  *     }
  */
 
@@ -133,6 +132,8 @@ typedef struct CF_Shader { uint64_t id; } CF_Shader;
 	CF_ENUM(BACKEND_TYPE_METAL,  3)                                                \
 	/* @entry A "secret" backend for platforms under non-disclosure agreement. */  \
 	CF_ENUM(BACKEND_TYPE_PRIVATE,  4)                                              \
+	/* @entry OpenGL ES 3 backen.. */                                              \
+	CF_ENUM(BACKEND_TYPE_GLES3,  5)                                                \
 	/* @end */
 
 typedef enum CF_BackendType
@@ -349,13 +350,24 @@ typedef enum CF_PixelFormatOp
  * @related  CF_PixelFormat cf_pixel_format_op_to_string CF_PixelFormatOp
  */
 CF_INLINE const char* cf_pixel_format_op_to_string(CF_PixelFormatOp op) {
-	switch (op) {
-	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
-	CF_PIXELFORMAT_OP_DEFS
-	#undef CF_ENUM
-	default: return NULL;
-	}
+switch (op) {
+#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+CF_PIXELFORMAT_OP_DEFS
+#undef CF_ENUM
+default: return NULL;
 }
+}
+
+/**
+ * @function cf_query_pixel_format
+ * @category graphics
+ * @brief    Queries whether a pixel format supports a specific operation on the current backend.
+ * @param    format  The `CF_PixelFormat` to query.
+ * @param    op      The operation to test, see `CF_PixelFormatOp`.
+ * @return   True if the operation is supported for the format, otherwise false.
+ * @related  CF_PixelFormat CF_PixelFormatOp cf_texture_supports_format
+ */
+CF_API bool CF_CALL cf_query_pixel_format(CF_PixelFormat format, CF_PixelFormatOp op);
 
 //--------------------------------------------------------------------------------------------------
 // Texture.
@@ -1865,15 +1877,6 @@ CF_API void CF_CALL cf_apply_shader(CF_Shader shader, CF_Material material);
  */
 CF_API void CF_CALL cf_draw_elements(void);
 
-/**
- * @function cf_commit
- * @category graphics
- * @brief    Submits all previous draw commands to the GPU.
- * @remarks  You must call this after calling `cf_apply_shader` to "complete" the rendering pass.
- * @related  CF_Canvas cf_apply_canvas cf_apply_mesh cf_apply_shader
- */
-CF_API void CF_CALL cf_commit(void);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus
@@ -1928,7 +1931,6 @@ CF_INLINE void apply_scissor(int x, int y, int w, int h) { cf_apply_scissor(x, y
 CF_INLINE void apply_mesh(CF_Mesh mesh) { cf_apply_mesh(mesh); }
 CF_INLINE void apply_shader(CF_Shader shader, CF_Material material) { cf_apply_shader(shader, material); }
 CF_INLINE void draw_elements() { cf_draw_elements(); }
-CF_INLINE void commit() { cf_commit(); }
 
 }
 void cf_clear_canvas(CF_Canvas canvas_handle);
