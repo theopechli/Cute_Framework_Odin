@@ -35,6 +35,7 @@ Sprite :: struct {
 	scale:                 V2,
 	offset:                V2,
 	pivots:                [^]V2,
+	center_patches:        [^]Aabb,
 	slices:                [^]SpriteSlice,
 	opacity:               c.float,
 	frame_index:           c.int,

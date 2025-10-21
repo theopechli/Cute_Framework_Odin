@@ -90,6 +90,8 @@ foreign lib {
 	draw_translate         :: proc(w: c.float, h: c.float) ---
 	draw_translate_v2      :: proc(position: V2) ---
 	draw_scale             :: proc(w: c.float, h: c.float) ---
+	draw_TSR               :: proc(position: V2, scale: V2, radians: c.float) ---
+	draw_TSR_absolute      :: proc(position: V2, scale: V2, radians: c.float) ---
 	draw_push              :: proc() ---
 	draw_pop               :: proc() ---
 	world_to_screen        :: proc(point: V2) -> V2 ---
