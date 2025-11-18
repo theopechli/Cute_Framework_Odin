@@ -53,6 +53,8 @@ foreign lib {
 	app_set_msaa                       :: proc(sample_count: c.int) -> bool ---
 	app_get_canvas                     :: proc() -> Canvas ---
 	app_set_canvas_size                :: proc(w: c.int, h: c.int) ---
+	app_get_canvas_width               :: proc() -> c.int ---
+	app_get_canvas_height              :: proc() -> c.int ---
 	app_set_vsync                      :: proc(true_turn_on_vsync: bool) ---
 	app_set_vsync_mailbox              :: proc(true_turn_on_mailbox: bool) ---
 	app_set_borderless_fullscreen_mode :: proc() ---

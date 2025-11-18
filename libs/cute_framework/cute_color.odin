@@ -12,6 +12,7 @@ Pixel :: struct #raw_union {
 make_color_rgb_f  :: #force_inline proc "c" (r: c.float, g: c.float, b: c.float) -> Color { return Color { r, g, b, 1.0 } }
 make_color_rgba_f :: #force_inline proc "c" (r: c.float, g: c.float, b: c.float, a: c.float) -> Color { return Color { r, g, b, a } }
 make_color_rgb    :: #force_inline proc "c" (r: c.uint8_t, g: c.uint8_t, b: c.uint8_t) -> Color { return Color { cast(c.float)r / 255.0, cast(c.float)g / 255.0, cast(c.float)b / 255.0, 1.0 } }
+make_color_rgba    :: #force_inline proc "c" (r: c.uint8_t, g: c.uint8_t, b: c.uint8_t, a: c.uint8_t) -> Color { return Color { cast(c.float)r / 255.0, cast(c.float)g / 255.0, cast(c.float)b / 255.0, cast(c.float)a / 255.0 } }
 make_pixel_rgb    :: #force_inline proc "c" (r: c.uint8_t, g: c.uint8_t, b: c.uint8_t) -> Pixel { return Pixel { colors = { r, g, b, 255 } } }
 
 color_invisible   :: #force_inline proc "c" () -> Color { return make_color_rgba_f(0.0, 0.0, 0.0, 0.0) }
@@ -19,5 +20,6 @@ color_clear       :: #force_inline proc "c" () -> Color { return make_color_rgba
 color_black       :: #force_inline proc "c" () -> Color { return make_color_rgb_f(0.0, 0.0, 0.0) }
 color_white       :: #force_inline proc "c" () -> Color { return make_color_rgb_f(1.0, 1.0, 1.0) }
 color_red         :: #force_inline proc "c" () -> Color { return make_color_rgb_f(1.0, 0.0, 0.0) }
+color_orange      :: #force_inline proc "c" () -> Color { return make_color_rgb_f(1.0, 0.65, 0.0) }
 color_grey        :: #force_inline proc "c" () -> Color { return make_color_rgb_f(0.5, 0.5, 0.5) }
 color_cyan        :: #force_inline proc "c" () -> Color { return make_color_rgb(68, 220, 235) }
