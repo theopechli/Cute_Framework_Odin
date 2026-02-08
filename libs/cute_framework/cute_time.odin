@@ -7,6 +7,7 @@ foreign lib {
 	DELTA_TIME:             c.float
 	DELTA_TIME_FIXED:       c.float
 	DELTA_TIME_INTERPOLANT: c.float
+	SECONDS:                c.double
 }
 
 OnUpdateFn :: #type proc "c" (udata: rawptr)

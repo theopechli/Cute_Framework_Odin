@@ -24,6 +24,7 @@ AppOptionFlagBits :: enum c.int {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	default_display      :: proc() -> DisplayID ---
+	display_count        :: proc() -> c.int ---
 	display_width        :: proc(display_id: DisplayID) -> c.int ---
 	display_height       :: proc(display_id: DisplayID) -> c.int ---
 	display_refresh_rate :: proc(display_id: DisplayID) -> c.float ---
@@ -38,6 +39,10 @@ foreign lib {
 	app_update           :: proc(on_update: OnUpdateFn = nil) ---
 	app_draw_onto_screen :: proc(clear: bool = false) -> c.int ---
 	app_get_size         :: proc(w: ^c.int, h: ^c.int) ---
+	app_set_size         :: proc(w: c.int, h: c.int) ---
+	app_was_resized      :: proc() -> bool ---
+	app_was_minimized    :: proc() -> bool ---
+	app_was_restored     :: proc() -> bool ---
 	app_init_imgui       :: proc() -> rawptr ---
 }
 
@@ -57,6 +62,8 @@ foreign lib {
 	app_get_canvas_height              :: proc() -> c.int ---
 	app_set_vsync                      :: proc(true_turn_on_vsync: bool) ---
 	app_set_vsync_mailbox              :: proc(true_turn_on_mailbox: bool) ---
+	app_get_vsync                      :: proc() -> bool ---
+	app_set_windowed_mode              :: proc() ---
 	app_set_borderless_fullscreen_mode :: proc() ---
 	app_get_framerate                  :: proc() -> c.float ---
 }

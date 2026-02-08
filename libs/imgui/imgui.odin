@@ -2208,8 +2208,8 @@ foreign lib {
 	// - 'uv0' and 'uv1' are texture coordinates. Read about them from the same link above.
 	// - Note that Image() may add +2.0f to provided size if a border is visible, ImageButton() adds style.FramePadding*2.0f to provided size.
 	// - ImageButton() draws a background based on regular Button() color + optionally an inner background if specified.
-	@(link_name="ImGui_Image")       Image       :: proc(user_texture_id: TextureID, image_size: Vec2, uv0: Vec2 = {0, 0}, uv1: Vec2 = {1, 1}, tint_col: Vec4 = {1, 1, 1, 1}, border_col: Vec4 = {0, 0, 0, 0})                      ---
-	@(link_name="ImGui_ImageButton") ImageButton :: proc(str_id: cstring, user_texture_id: TextureID, image_size: Vec2, uv0: Vec2 = {0, 0}, uv1: Vec2 = {1, 1}, bg_col: Vec4 = {0, 0, 0, 0}, tint_col: Vec4 = {1, 1, 1, 1}) -> bool ---
+	@(link_name="ImGui_Image")       Image       :: proc(tex_ref: TextureRef, image_size: Vec2) ---
+	@(link_name="ImGui_ImageButton") ImageButton :: proc(str_id: cstring, tex_ref: TextureRef, image_size: Vec2) -> bool ---
 	// Widgets: Combo Box (Dropdown)
 	// - The BeginCombo()/EndCombo() api allows you to manage your contents and selection state however you want it, by creating e.g. Selectable() items.
 	// - The old Combo() api are helpers over BeginCombo()/EndCombo() which are kept available for convenience purpose. This is analogous to how ListBox are created.
@@ -2957,6 +2957,65 @@ foreign lib {
 ID        :: c.uint   // A unique ID used by widgets (typically the result of hashing a stack of string)
 KeyChord  :: c.int    // -> ImGuiKey | ImGuiMod_XXX    // Flags: for IsKeyChordPressed(), Shortcut() etc. an ImGuiKey optionally OR-ed with one or more ImGuiMod_XXX values.
 TextureID :: u64      // Default: store a pointer or an integer fitting in a pointer (most renderer backends are ok with that)
+
+TextureStatus :: enum u32 {
+	OK          = 0,
+	Destroyed   = 1, // Backend destroyed the texture.
+	WantCreate  = 2, // Requesting backend to create the texture. Set status OK when done.
+	WantUpdates = 3, // Requesting backend to update specific blocks of pixels (write to texture portions which have never been used before). Set status OK when done.
+	WantDestroy = 4, // Requesting backend to destroy the texture. Set status to Destroyed when done.
+}
+
+TextureFormat :: enum u32 {
+	RGBA32 = 0, // 4 components per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
+	Alpha8 = 1, // 1 component per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight
+}
+
+TextureRect_t :: struct {
+	x, y: u16, // Upper-left coordinates of rectangle to update
+	w, h: u16, // Size of rectangle to update (in pixels)
+}
+
+TextureRect :: TextureRect_t            // Coordinates of a rectangle within a texture.
+
+Vector_ImTextureRect_t :: struct {
+	Size, Capacity: i32,            // Instantiation of ImVector<ImTextureRect>
+	Data:           ^TextureRect, // Instantiation of ImVector<ImTextureRect>
+} // Instantiation of ImVector<ImTextureRect>
+
+
+Vector_ImTextureRect :: Vector_ImTextureRect_t
+
+TextureData_t :: struct {
+	//------------------------------------------ core / backend ---------------------------------------
+	UniqueID:             i32,                    // w    -   // [DEBUG] Sequential index to facilitate identifying a texture when debugging/printing. Unique per atlas.
+	Status:               TextureStatus,        // rw   rw  // ImTextureStatus_OK/_WantCreate/_WantUpdates/_WantDestroy. Always use SetStatus() to modify!
+	BackendUserData:      rawptr,                 // -    rw  // Convenience storage for backend. Some backends may have enough with TexID.
+	TexID:                TextureID,            // r    w   // Backend-specific texture identifier. Always use SetTexID() to modify! The identifier will stored in ImDrawCmd::GetTexID() and passed to backend's RenderDrawData function.
+	Format:               TextureFormat,        // w    r   // ImTextureFormat_RGBA32 (default) or ImTextureFormat_Alpha8
+	Width:                i32,                    // w    r   // Texture width
+	Height:               i32,                    // w    r   // Texture height
+	BytesPerPixel:        i32,                    // w    r   // 4 or 1
+	Pixels:               ^u8,                    // w    r   // Pointer to buffer holding 'Width*Height' pixels and 'Width*Height*BytesPerPixels' bytes.
+	UsedRect:             TextureRect,          // w    r   // Bounding box encompassing all past and queued Updates[].
+	UpdateRect:           TextureRect,          // w    r   // Bounding box encompassing all queued Updates[].
+	Updates:              Vector_ImTextureRect, // w    r   // Array of individual updates.
+	UnusedFrames:         i32,                    // w    r   // In order to facilitate handling Status==WantDestroy in some backend: this is a count successive frames where the texture was not used. Always >0 when Status==WantDestroy.
+	RefCount:             u16,                    // w    r   // Number of contexts using this texture. Used during backend shutdown.
+	UseColors:            i32,                    // w    r   // Tell whether our texture data is known to use colors (rather than just white + alpha).
+	WantDestroyNextFrame: i32,                    // rw   -   // [Internal] Queued to set ImTextureStatus_WantDestroy next frame. May still be used in the current frame.
+}
+
+TextureData :: TextureData_t            // Specs and pixel storage for a texture used by Dear ImGui.
+
+TextureRef_t :: struct {
+	// Members (either are set, never both!)
+	_TexData: ^TextureData, //      A texture, generally owned by a ImFontAtlas. Will convert to ImTextureID during render loop, after texture has been uploaded.
+	_TexID:   TextureID,    // _OR_ Low-level backend texture identifier, if already uploaded or created by user/app. Generally provided to e.g. ImGui::Image() calls.
+}
+
+TextureRef :: TextureRef_t
+
 DrawIdx   :: c.ushort // Default: 16-bit (for maximum compatibility with renderer backends)
 // Character types
 // (we generally use UTF-8 encoded string in the API. This is storage specifically for a decoded character used for keyboard input and display)

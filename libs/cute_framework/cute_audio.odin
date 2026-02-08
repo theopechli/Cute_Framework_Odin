@@ -11,6 +11,11 @@ foreign lib {
 	audio_destroy  :: proc(audio: Audio) ---
 }
 
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	audio_set_pause :: proc(true_for_paused: bool) ---
+}
+
 SoundParams :: struct {
 	paused:       bool,
 	looped:       bool,

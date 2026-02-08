@@ -125,6 +125,7 @@ foreign lib {
 	make_texture     :: proc(texture_params: TextureParams) -> Texture ---
 	destroy_texture  :: proc(texture: Texture) ---
 	texture_update   :: proc(texture: Texture, data: rawptr, size: c.int) ---
+	texture_handle   :: proc(texture: Texture) -> c.uint64_t ---
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
@@ -202,9 +203,11 @@ VertexAttribute :: struct {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	make_mesh                 :: proc(vertex_buffer_size_in_bytes: i32, attributes: [^]VertexAttribute, attribute_count: c.int, vertex_stride: c.int) -> Mesh ---
+	mesh_set_index_buffer     :: proc(mesh: Mesh, index_buffer_size_in_bytes: c.int, index_bit_count: c.int) ---
 	mesh_set_instance_buffer  :: proc(mesh: Mesh, instance_buffer_size_in_bytes: c.int, instance_stride: c.int) ---
 	destroy_mesh              :: proc(mesh: Mesh) ---
 	mesh_update_vertex_data   :: proc(mesh: Mesh, data: rawptr, count: c.int) ---
+	mesh_update_index_data    :: proc(mesh: Mesh, data: rawptr, count: c.int) ---
 	mesh_update_instance_data :: proc(mesh: Mesh, data: rawptr, count: c.int) ---
 }
 
@@ -334,6 +337,7 @@ foreign lib {
 	make_material             :: proc() -> Material ---
 	destroy_material          :: proc(material: Material) ---
 	material_set_render_state :: proc(material: Material, render_state: RenderState) ---
+	material_set_texture_fs   :: proc(material: Material, name: cstring, texture: Texture) ---
 	material_set_uniform_vs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
 	material_set_uniform_fs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
 	clear_color               :: proc(red: c.float, green: c.float, blue: c.float, alpha: c.float) ---

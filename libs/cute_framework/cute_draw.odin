@@ -16,6 +16,8 @@ foreign lib {
 	draw_box_rounded             :: proc(bb: Aabb, thickness: c.float, radius: c.float) ---
 	draw_box_rounded_fill        :: proc(bb: Aabb, radius: c.float) ---
 	draw_circle                  :: proc(circle: Circle, thickness: c.float) ---
+	draw_circle2                 :: proc(p: V2, r: c.float, thickness: c.float) ---
+	draw_circle_fill             :: proc(circle: Circle) ---
 	draw_capsule                 :: proc(capsule: Capsule, thickness: c.float) ---
 	draw_line                    :: proc(p0: V2, p1: V2, thickness: c.float) ---
 	draw_polyline                :: proc(points: [^]V2, count: c.int, thickness: c.float, loop: bool) ---
@@ -72,6 +74,8 @@ TextEffect :: struct {
 foreign lib {
 	push_text_effect_active :: proc(effects_on: bool) ---
 	pop_text_effect_active  :: proc() -> bool ---
+	draw_push_viewport      :: proc(viewport: Rect) ---
+	draw_pop_viewport       :: proc() -> Rect ---
 	draw_push_scissor       :: proc(scissor: Rect) ---
 	draw_pop_scissor        :: proc() -> Rect ---
 	draw_push_render_state  :: proc(render_state: RenderState) ---
@@ -83,6 +87,18 @@ foreign lib {
 	make_draw_shader       :: proc(path: cstring) -> Shader ---
 	draw_push_shader       :: proc(shader: Shader) ---
 	draw_pop_shader        :: proc() -> Shader ---
+}
+
+DrawFilterMode :: enum {
+	NEAREST,
+	LINEAR,
+	SMOOTH,
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	draw_push_filter       :: proc(mode: DrawFilterMode) ---
+	draw_pop_filter        :: proc() -> DrawFilterMode ---
 	draw_set_texture       :: proc(name: cstring, texture: Texture) ---
 	draw_set_uniform       :: proc(name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
 	draw_set_uniform_int   :: proc(name: cstring, val: c.int) ---
@@ -96,6 +112,7 @@ foreign lib {
 	draw_TSR_absolute      :: proc(position: V2, scale: V2, radians: c.float) ---
 	draw_push              :: proc() ---
 	draw_pop               :: proc() ---
+	draw_projection        :: proc(projection: M3x2) ---
 	world_to_screen        :: proc(point: V2) -> V2 ---
 	screen_to_world        :: proc(point: V2) -> V2 ---
 	draw_canvas            :: proc(canvas: Canvas, position: V2, scale: V2) ---

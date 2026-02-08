@@ -253,13 +253,17 @@ KeyButton :: enum {
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	key_down           :: proc(key: KeyButton) -> bool ---
-	key_up             :: proc(key: KeyButton) -> bool ---
-	key_just_pressed   :: proc(key: KeyButton) -> bool ---
-	mouse_x            :: proc() -> c.float ---
-	mouse_y            :: proc() -> c.float ---
-	mouse_down         :: proc(button: MouseButton) -> bool ---
-	mouse_just_pressed :: proc(button: MouseButton) -> bool ---
-	mouse_wheel_motion :: proc() -> c.float ---
-	mouse_hide         :: proc(true_to_hide: bool) ---
+	key_down            :: proc(key: KeyButton) -> bool ---
+	key_up              :: proc(key: KeyButton) -> bool ---
+	key_just_pressed    :: proc(key: KeyButton) -> bool ---
+	key_just_released   :: proc(key: KeyButton) -> bool ---
+	mouse_x             :: proc() -> c.float ---
+	mouse_y             :: proc() -> c.float ---
+	mouse_motion_x      :: proc() -> c.float ---
+	mouse_motion_y      :: proc() -> c.float ---
+	mouse_down          :: proc(button: MouseButton) -> bool ---
+	mouse_just_pressed  :: proc(button: MouseButton) -> bool ---
+	mouse_just_released :: proc(button: MouseButton) -> bool ---
+	mouse_wheel_motion  :: proc() -> c.float ---
+	mouse_hide          :: proc(true_to_hide: bool) ---
 }

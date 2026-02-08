@@ -10,6 +10,16 @@ SinCos :: struct {
 	c: c.float,
 }
 
+M2x2 :: struct {
+	x: V2,
+	y: V2,
+}
+
+M3x2 :: struct {
+	m: M2x2,
+	p: V2,
+}
+
 Transform :: struct {
 	r: SinCos,
 	p: V2,
@@ -54,8 +64,32 @@ safe_norm :: #force_inline proc "c" (a: V2) -> V2 { sq := la.dot(a, a); return s
 
 bezier :: #force_inline proc "c" (a: V2, c0: V2, b: V2, t: c.float) -> V2 { return la.lerp(la.lerp(a, c0, t), la.lerp(c0, b, t), t) }
 
-sincos_f :: #force_inline proc "c" (radians: c.float) -> SinCos { return SinCos { s = la.sin(radians), c = la.cos(radians) } }
-sincos   :: #force_inline proc "c" () -> SinCos { return SinCos { s = 1.0, c = 0.0 } }
+sincos :: proc{
+	sincos_f,
+	sincos_identity,
+}
+sincos_f        :: #force_inline proc "c" (radians: c.float) -> SinCos { return SinCos { s = la.sin(radians), c = la.cos(radians) } }
+sincos_identity :: #force_inline proc "c" () -> SinCos { return SinCos { s = 1.0, c = 0.0 } }
+
+make_transform_TSR :: #force_inline proc "c" (p: V2, s: V2, radians: f32) -> M3x2 {
+	sc := sincos(radians)
+	m: M3x2
+	m.m.x = { sc.c, -sc.s } * s.x
+	m.m.y = { sc.s, sc.c } * s.y
+	m.p = p
+	return m
+}
+
+
+ortho_2d :: #force_inline proc "c" (x: c.float, y: c.float, scale_x: c.float, scale_y: c.float) -> M3x2 {
+	return {
+		m = {
+			x = { 2.0 / scale_x, 0.0 },
+			y = { 0.0, 2.0 / scale_y },
+		},
+		p = { -2.0 * x / scale_x, -2.0 * y / scale_y },
+	}
+}
 
 make_transform          :: #force_inline proc "c" () -> Transform { return Transform { p = V2 { 0.0, 0.0 }, r = sincos() } }
 make_aabb               :: #force_inline proc "c" (min: V2, max: V2) -> Aabb { return Aabb { min = min, max = max } }
@@ -69,6 +103,11 @@ top_right    :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.max.x, 
 bottom_left  :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.min.x, bb.min.y } }
 bottom_right :: #force_inline proc "c" (bb: Aabb) -> V2 { return V2 { bb.max.x, bb.min.y } }
 
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	center_of_mass :: proc(poly: Poly) -> V2 ---
+}
+
 ShapeType :: enum c.int {
 	NONE,
 	CIRCLE,
@@ -80,13 +119,18 @@ ShapeType :: enum c.int {
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
 	norms                       :: proc(verts: [^]V2, norms: [^]V2, count: c.int) ---
+	make_poly                   :: proc(p: ^Poly) ---
 	aabb_to_aabb                :: proc(A: Aabb, B: Aabb) -> bool ---
 	aabb_to_capsule             :: proc(A: Aabb, B: Capsule) -> bool ---
 	circle_to_circle_manifold   :: proc(A: Circle, B: Circle) -> Manifold ---
+	circle_to_aabb_manifold     :: proc(A: Circle, B: Aabb) -> Manifold ---
 	circle_to_capsule_manifold  :: proc(A: Circle, B: Capsule) -> Manifold ---
 	aabb_to_aabb_manifold       :: proc(A: Aabb, B: Aabb) -> Manifold ---
 	aabb_to_capsule_manifold    :: proc(A: Aabb, B: Capsule) -> Manifold ---
 	capsule_to_capsule_manifold :: proc(A: Capsule, B: Capsule) -> Manifold ---
+	circle_to_poly_manifold     :: proc(A: Circle, B: ^Poly, bx: ^Transform) -> Manifold ---
+	aabb_to_poly_manifold       :: proc(A: Aabb, B: ^Poly, bx: ^Transform) -> Manifold ---
+	poly_to_poly_manifold       :: proc(A: ^Poly, ax: ^Transform, B: ^Poly, bx: ^Transform) -> Manifold ---
 }
 
 ToiResult :: struct {
