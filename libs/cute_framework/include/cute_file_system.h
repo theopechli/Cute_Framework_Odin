@@ -19,159 +19,8 @@
 extern "C" {
 #endif // __cplusplus
 
-//--------------------------------------------------------------------------------------------------
-// Path helper functions.
-// These are implemented with the C-string API in "cute_string.h"; each function returns a fully
-// mutable string you must free up with `sfree` or `cf_string_free` when done.
-
-/**
- * @function spfname
- * @category path
- * @brief    Returns the filename portion of a path. Returns a new string.
- * @param    s          The path string.
- * @example  > Example fetching a filename from a path.
- *     const char* filename = spfname("/data/collections/rare/big_gem.txt");
- *     printf("%s\n", filename);
- *     // Prints: big_gem.txt
- * @remarks  Call `sfree` on the return value when done. `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spfname(s) cf_path_get_filename(s)
-
-/**
- * @function spfname_no_ext
- * @category path
- * @brief    Returns the filename portion of a path without the file extension. Returns a new string.
- * @param    s          The path string.
- * @example  > Example fetching a filename from a path without the extension attached.
- *     const char* filename = spfname("/data/collections/rare/big_gem.txt");
- *     printf("%s\n", filename);
- *     // Prints: big_gem
- * @remarks  Call `sfree` on the return value when done. `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spfname_no_ext(s) cf_path_get_filename_no_ext(s)
-
-/**
- * @function spext
- * @category path
- * @brief    Returns the extension of the file for the given path. Returns a new string.
- * @param    s          The path string.
- * @example  > Example fetching a filename from a path without the extension attached.
- *     const char* ext = spfname("/data/collections/rare/big_gem.txt");
- *     printf("%s\n", ext);
- *     // Prints: .txt
- * @remarks  Call `sfree` on the return value when done. `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spext(s) cf_path_get_ext(s)
-
-/**
- * @function spext_equ
- * @category path
- * @brief    Returns true if the file's extension matches, false otherwise.
- * @param    s          The path string.
- * @param    ext        The file extension.
- * @remarks  `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spext_equ(s, ext) cf_path_ext_equ(s, ext)
-
-/**
- * @function sppop
- * @category path
- * @brief    Removes the rightmost file or directory from the path.
- * @param    s          The path string.
- * @return   If the string is not a dynamic string from CF's string API, a new string is returned. Otherwise the
- *           string is modified in-place. You must call `sfree` if a new dynamic string is returned, when done.
- * @remarks  `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define sppop(s) cf_path_pop(s)
-
-/**
- * @function sppopn
- * @category path
- * @brief    Removes the rightmost n files or directories from the path.
- * @param    s          The path string.
- * @param    n          The number of files to pop from the directory path.
- * @return   If the string is not a dynamic string from CF's string API, a new string is returned. Otherwise the
- *           string is modified in-place. You must call `sfree` if a new dynamic string is returned, when done.
- * @remarks  `sp` stands for "sting path".
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define sppopn(s, n) cf_path_pop_n(s, n)
-
-/**
- * @function spcompact
- * @category path
- * @brief    Squishes the path to be less than or equal to n characters in length.
- * @param    s          The path string.
- * @param    n          The number of files to pop from the directory path.
- * @return   If the string is not a dynamic string from CF's string API, a new string is returned. Otherwise the
- *           string is modified in-place. You must call `sfree` if a new dynamic string is returned, when done.
- * @remarks  This will insert ellipses "..." into the path as necessary. This function is useful for displaying paths
- *           and visualizing them in small boxes or windows. n includes the nul-byte. Returns a new string.
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spcompact(s, n) cf_path_compact(s, n)
-
-/**
- * @function spdir_of
- * @category path
- * @brief    Returns the directory of a given file or directory. Returns a new string.
- * @param    s          The path string.
- * @example  > Example fetching a directory a file sits within.
- *     const char* filename = spfname("/data/collections/rare/big_gem.txt");
- *     printf("%s\n", filename);
- *     // Prints: /rare
- * @remarks  `sp` stands for "sting path". Call `sfree` on the return value when done.
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spdir_of(s) cf_path_directory_of(s)
-
-/**
- * @function sptop_of
- * @category path
- * @brief    Returns the top-level directory of a given file or directory. Returns a new string.
- * @param    s          The path string.
- * @example  > Example fetching a the top-level directory a file sits within.
- *     const char* filename = spfname("/data/collections/rare/big_gem.txt");
- *     printf("%s\n", filename);
- *     // Prints: /data
- * @remarks  `sp` stands for "sting path". Call `sfree` on the return value when done.
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define sptop_of(s) cf_path_top_directory(s)
-
-/**
- * @function spnorm
- * @category path
- * @brief    Normalizes a path as a new string.
- * @param    s          The path string.
- * @remarks  All '\\' are replaced with '/'. Any duplicate '////' are replaced with a single '/'. Trailing '/' are removed. Dot folders are resolved, e.g.
- *           ```
- *           spnorm("/a/b/./c") -> "/a/b/c"
- *           spnorm("/a/b/../c") -> "/a/c"
- *           ```
- *           The first character is always '/', unless it's a windows drive, e.g.
- *           ```
- *           spnorm("C:\\Users\\Randy\\Documents") -> "C:/Users/Randy/Documents"
- *           ```
- * @related  spfname spfname_no_ext spext spext_equ sppop sppopn spcompact spdir_of sptop_of spnorm
- */
-#define spnorm(s) cf_path_normalize(s)
-
-CF_API char* CF_CALL cf_path_get_filename(const char* path);
-CF_API char* CF_CALL cf_path_get_filename_no_ext(const char* path);
-CF_API char* CF_CALL cf_path_get_ext(const char* path);
-CF_API bool CF_CALL cf_path_ext_equ(const char* path, const char* ext);
-CF_API char* CF_CALL cf_path_pop(const char* path);
-CF_API char* CF_CALL cf_path_pop_n(const char* path, int n);
-CF_API char* CF_CALL cf_path_compact(const char* path, int n);
-CF_API char* CF_CALL cf_path_directory_of(const char* path);
-CF_API char* CF_CALL cf_path_top_directory(const char* path);
-CF_API char* CF_CALL cf_path_normalize(const char* path);
+// Path helper macros (spfname, sppop, spnorm, etc.) are defined in ckit.h.
+// Longform cf_path_* aliases are in cute_string.h.
 
 //--------------------------------------------------------------------------------------------------
 // Virtual file system.
@@ -243,7 +92,7 @@ CF_API char* CF_CALL cf_path_normalize(const char* path);
  * a single file without overwriting each other on the actual disk.
  * 
  * By default CF mounts the base directory when you call `make_app`. This can be disabled by
- * passing the `APP_OPTIONS_FILE_SYSTEM_DONT_DEFAULT_MOUNT` flag to `make_app`.
+ * passing the `CF_APP_OPTIONS_FILE_SYSTEM_DONT_DEFAULT_MOUNT_BIT` flag to `cf_make_app`.
  */
 
 /**
@@ -263,7 +112,7 @@ typedef struct CF_File CF_File;
  * @related  CF_File CF_Stat cf_file_type_to_string
  */
 #define CF_FILE_TYPE_DEFS \
-	/* @entry A reguler file, such as a .txt or .pdf file. */ \
+	/* @entry A regular file, such as a .txt or .pdf file. */ \
 	CF_ENUM(FILE_TYPE_REGULAR, 0)                             \
 	/* @entry A directory/folder. */                          \
 	CF_ENUM(FILE_TYPE_DIRECTORY, 1)                           \
@@ -338,7 +187,7 @@ CF_API const char* CF_CALL cf_fs_get_base_directory(void);
  * @function cf_fs_get_working_directory
  * @category file
  * @brief    Returns the current working directory in platform-dependent notation.
- * @remarks  Not all platforms have the concept of a working directory, but this function will sill try to return something sane in these cases.
+ * @remarks  Not all platforms have the concept of a working directory, but this function will still try to return something sane in these cases.
  * @related  cf_fs_get_base_directory cf_fs_set_write_directory cf_fs_get_user_directory cf_fs_mount cf_fs_dismount cf_fs_get_working_directory
  */
 CF_API const char* CF_CALL cf_fs_get_working_directory(void);
@@ -395,12 +244,12 @@ CF_API const char* CF_CALL cf_fs_get_user_directory(const char* company_name, co
  *           modding or download patches, as duplicate entries will be searched for on the path as normal,
  *           without the need to overwrite each other on the actual disk.
  *           
- *           You can mount an actual directory or an archive file. If it's an archive the vitrual file
+ *           You can mount an actual directory or an archive file. If it's an archive the virtual file
  *           system will treat it like a normal directory for you. There are a variety of archive file
  *           formats supported (see top of file).
  *           
  *           By default CF mounts the base directory when you call `cf_make_app`. This can be disabled by
- *           passing the `CF_APP_OPTIONS_FILE_SYSTEM_DONT_DEFAULT_MOUNT` flag to `cf_make_app`. [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
+ *           passing the `CF_APP_OPTIONS_FILE_SYSTEM_DONT_DEFAULT_MOUNT_BIT` flag to `cf_make_app`. [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
  * @related  cf_fs_get_base_directory cf_fs_set_write_directory cf_fs_get_user_directory cf_fs_mount cf_fs_dismount
  */
 CF_API CF_Result CF_CALL cf_fs_mount(const char* archive, const char* mount_point, bool append_to_path);
@@ -505,11 +354,11 @@ CF_API CF_Result CF_CALL cf_fs_create_directory(const char* virtual_path);
  * @param    virtual_path  The virtual path to the directory.
  * @return   Returns any errors as a `CF_Result`.
  * @example > Loop over a list of all files in a directory.
- *     const char** list = cf_fs_enumerate_directory("/data");
- *     for (const char** i = list; *i; ++i) {
- *         printf("Found %s\n", *i);
- *     }
- *     cf_fs_free_enumerated_directory(list);
+ *           const char** list = cf_fs_enumerate_directory("/data");
+ *           for (const char** i = list; *i; ++i) {
+ *               printf("Found %s\n", *i);
+ *           }
+ *           cf_fs_free_enumerated_directory(list);
  * @remarks  Results are collected by visiting the search path for all real directories mounted on `virtual_path`. No duplicate file
  *           names will be reported. The list itself is sorted alphabetically, though you can further sort it however you like. Free
  *           the list up with `cf_fs_free_enumerated_directory` when done. The final element of the list is NULL. [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
@@ -743,6 +592,11 @@ CF_INLINE CF_Result fs_write_entire_buffer_to_file(const char* virtual_path, con
 CF_INLINE const char* fs_get_backend_specific_error_message() { return cf_fs_get_backend_specific_error_message(); }
 CF_INLINE const char* fs_get_user_directory(const char* org, const char* app) { return cf_fs_get_user_directory(org, app); }
 CF_INLINE const char* fs_get_actual_path(const char* virtual_path) { return cf_fs_get_actual_path(virtual_path); }
+CF_INLINE const char* fs_get_working_directory() { return cf_fs_get_working_directory(); }
+CF_INLINE CF_Result fs_write_string_to_file(const char* virtual_path, const char* string) { return cf_fs_write_string_to_file(virtual_path, string); }
+CF_INLINE CF_Result fs_write_string_range_to_file(const char* virtual_path, const char* begin, const char* end) { return cf_fs_write_string_range_to_file(virtual_path, begin, end); }
+CF_INLINE CF_Result fs_init(const char* argv0) { return cf_fs_init(argv0); }
+CF_INLINE void fs_destroy() { cf_fs_destroy(); }
 
 struct CF_Path
 {
@@ -752,7 +606,7 @@ struct CF_Path
 	CF_INLINE CF_Path(CF_Path&& p) { *this = p; }
 	CF_INLINE ~CF_Path() { sfree(m_path); m_path = NULL; }
 
-	static CF_INLINE CF_Path steal_from(const char* cute_c_api_string) { CF_ACANARY(cute_c_api_string); CF_Path p; p.m_path = (char*)cute_c_api_string; return p; }
+	static CF_INLINE CF_Path steal_from(const char* cute_c_api_string) { CK_ACANARY(cute_c_api_string); CF_Path p; p.m_path = (char*)cute_c_api_string; return p; }
 
 	CF_INLINE String filename() const { return String::steal_from(spfname(m_path)); }
 	CF_INLINE String filename_no_ext() const { return String::steal_from(spfname_no_ext(m_path)); }

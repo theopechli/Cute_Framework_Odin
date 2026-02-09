@@ -71,6 +71,16 @@
 	#define CF_LOG2F log2f
 #endif
 
+#ifndef CF_POWF
+	#include <math.h>
+	#define CF_POWF powf
+#endif
+
+#ifndef CF_EXPF
+	#include <math.h>
+	#define CF_EXPF expf
+#endif
+
 #ifndef CF_SQRT
 	#include <math.h>
 	#define CF_SQRT sqrt
@@ -124,6 +134,16 @@
 #ifndef CF_LOG2
 	#include <math.h>
 	#define CF_LOG2 log2
+#endif
+
+#ifndef CF_POW
+	#include <math.h>
+	#define CF_POW pow
+#endif
+
+#ifndef CF_EXP
+	#include <math.h>
+	#define CF_EXP exp
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -316,7 +336,7 @@ typedef struct CF_Circle
  * @struct   CF_Aabb
  * @category math
  * @brief    Axis-aligned bounding box. A box that cannot rotate.
- * @remarks  There are many ways to describ an AABB, such as a point + half-extents, or a point and width/height pair. However, of all
+ * @remarks  There are many ways to describe an AABB, such as a point + half-extents, or a point and width/height pair. However, of all
  *           these options the min/max choice is the simplest when it comes to the majority of collision detection routine implementations.
  * @related  CF_Aabb cf_make_aabb cf_width cf_height cf_center cf_top_left cf_top_right cf_bottom_left cf_bottom_right cf_contains_point cf_overlaps cf_make_aabb_verts cf_aabb_verts cf_circle_to_aabb cf_aabb_to_aabb cf_aabb_to_capsule cf_aabb_to_poly cf_ray_to_aabb cf_circle_to_aabb_manifold cf_aabb_to_aabb_manifold cf_aabb_to_capsule_manifold cf_aabb_to_poly_manifold
  */
@@ -742,7 +762,7 @@ CF_INLINE CF_V2    cf_sign_v2 (CF_V2    x) { return (CF_V2){ cf_sign_f(x.x), cf_
 /**
  * @function cf_intersect
  * @category math
- * @brief    Given the distances of two points `a` and `b` to a plane (`da` and `db` respectively), compute the insterection
+ * @brief    Given the distances of two points `a` and `b` to a plane (`da` and `db` respectively), compute the intersection
  *           value used to lerp from `a` to `b` to find the intersection point.
  * @related  cf_min cf_max cf_clamp cf_clamp01 cf_sign cf_intersect cf_safe_invert cf_lerp cf_remap cf_mod cf_fract
  */
@@ -791,7 +811,7 @@ CF_INLINE CF_V2 cf_div_v2_f(CF_V2 a, float b) { return cf_v2(a.x / b, a.y / b); 
 /**
  * @function cf_lesser
  * @category math
- * @brief    Returns true if `a.x < b.y` and `a.y < b.y`.
+ * @brief    Returns true if `a.x < b.x` and `a.y < b.y`.
  * @related  CF_V2 cf_round cf_lesser cf_greater cf_lesser_equal cf_greater_equal cf_parallel
  */
 CF_INLINE int cf_lesser(CF_V2 a, CF_V2 b) { return a.x < b.x && a.y < b.y; }
@@ -799,7 +819,7 @@ CF_INLINE int cf_lesser(CF_V2 a, CF_V2 b) { return a.x < b.x && a.y < b.y; }
 /**
  * @function cf_greater
  * @category math
- * @brief    Returns true if `a.x > b.y` and `a.y > b.y`.
+ * @brief    Returns true if `a.x > b.x` and `a.y > b.y`.
  * @related  CF_V2 cf_round cf_lesser cf_greater cf_lesser_equal cf_greater_equal cf_parallel
  */
 CF_INLINE int cf_greater(CF_V2 a, CF_V2 b) { return a.x > b.x && a.y > b.y; }
@@ -807,7 +827,7 @@ CF_INLINE int cf_greater(CF_V2 a, CF_V2 b) { return a.x > b.x && a.y > b.y; }
 /**
  * @function cf_lesser_equal
  * @category math
- * @brief    Returns true if `a.x <= b.y` and `a.y <= b.y`.
+ * @brief    Returns true if `a.x <= b.x` and `a.y <= b.y`.
  * @related  CF_V2 cf_round cf_lesser cf_greater cf_lesser_equal cf_greater_equal cf_parallel
  */
 CF_INLINE int cf_lesser_equal(CF_V2 a, CF_V2 b) { return a.x <= b.x && a.y <= b.y; }
@@ -815,7 +835,7 @@ CF_INLINE int cf_lesser_equal(CF_V2 a, CF_V2 b) { return a.x <= b.x && a.y <= b.
 /**
  * @function cf_greater_equal
  * @category math
- * @brief    Returns true if `a.x >= b.y` and `a.y >= b.y`.
+ * @brief    Returns true if `a.x >= b.x` and `a.y >= b.y`.
  * @related  CF_V2 cf_round cf_lesser cf_greater cf_lesser_equal cf_greater_equal cf_parallel
  */
 CF_INLINE int cf_greater_equal(CF_V2 a, CF_V2 b) { return a.x >= b.x && a.y >= b.y; }
@@ -1144,6 +1164,54 @@ CF_INLINE double cf_sqrt_d(double x) { return CF_SQRT(x); }
 		float:   cf_sqrt_f,  \
 		double:  cf_sqrt_d,  \
 		default: cf_sqrt_f   \
+	)(x)
+#endif
+
+/**
+ * @function cf_pow
+ * @category math
+ * @brief    Returns `base` raised to the power of `exp`.
+ * @related  cf_abs cf_sqrt cf_square cf_exp
+ */
+#define cf_pow(base, exp)
+#undef cf_pow
+#ifdef __cplusplus
+} // extern "C"
+CF_INLINE float  cf_pow(float  base, float  exp) { return CF_POWF(base, exp); }
+CF_INLINE double cf_pow(double base, double exp) { return CF_POW(base, exp); }
+extern "C" {
+#else
+CF_INLINE float  cf_pow_f(float  base, float  exp) { return CF_POWF(base, exp); }
+CF_INLINE double cf_pow_d(double base, double exp) { return CF_POW(base, exp); }
+#define cf_pow(base, exp)    \
+	_Generic((base),         \
+		float:   cf_pow_f,   \
+		double:  cf_pow_d,   \
+		default: cf_pow_f    \
+	)((base), (exp))
+#endif
+
+/**
+ * @function cf_exp
+ * @category math
+ * @brief    Returns e raised to the power of `x`.
+ * @related  cf_abs cf_sqrt cf_pow cf_log2
+ */
+#define cf_exp(x)
+#undef cf_exp
+#ifdef __cplusplus
+} // extern "C"
+CF_INLINE float  cf_exp(float  x) { return CF_EXPF(x); }
+CF_INLINE double cf_exp(double x) { return CF_EXP(x); }
+extern "C" {
+#else
+CF_INLINE float  cf_exp_f(float  x) { return CF_EXPF(x); }
+CF_INLINE double cf_exp_d(double x) { return CF_EXP(x); }
+#define cf_exp(x)            \
+	_Generic((x),            \
+		float:   cf_exp_f,   \
+		double:  cf_exp_d,   \
+		default: cf_exp_f    \
 	)(x)
 #endif
 
@@ -1485,13 +1553,11 @@ extern "C" {
 CF_INLINE float cf_atan2_360_f_f(float y, float x) { return CF_ATAN2F(-y, -x) + CF_PI; }
 CF_INLINE float cf_atan2_360_sc(CF_SinCos r)       { return cf_atan2_360_f_f(r.s, r.c); }
 CF_INLINE float cf_atan2_360_v2(CF_V2 v)           { return CF_ATAN2F(-v.y, -v.x) + CF_PI; }
-#define cf_atan2_360(a, b)          \
-	_Generic((a),                   \
-		CF_V2:     cf_atan2_360_v2, \
-		CF_SinCos: cf_atan2_360_sc, \
-		float:     cf_atan2_360,    \
-		default:   cf_atan2_360     \
-	)((a), (b))
+
+#define _CF_ATAN2_360_1ARG(a) _Generic((a), CF_V2: cf_atan2_360_v2, CF_SinCos: cf_atan2_360_sc)(a)
+#define _CF_ATAN2_360_SELECT(_1, _2, NAME, ...) NAME
+#define cf_atan2_360(...) \
+	CF_EXPAND(_CF_ATAN2_360_SELECT(__VA_ARGS__, cf_atan2_360_f_f, _CF_ATAN2_360_1ARG)(__VA_ARGS__))
 #endif
 
 /**
@@ -1511,12 +1577,9 @@ extern "C" {
 CF_INLINE CF_M3x2 cf_make_translation_f_f(float x, float y) { CF_M3x2 m; m.m.x = cf_v2(1,0); m.m.y = cf_v2(0,1); m.p = cf_v2(x,y); return m; }
 CF_INLINE CF_M3x2 cf_make_translation_v2(CF_V2 p) { return cf_make_translation_f_f(p.x,p.y); }
 
-#define cf_make_translation(a, b)        \
-	_Generic((a),                        \
-		CF_V2:   cf_make_translation_v2, \
-		float:   cf_make_translation_f_f,\
-		default: cf_make_translation_f_f \
-	)((a), (b))
+#define _CF_MAKE_TRANSLATION_SELECT(_1, _2, NAME, ...) NAME
+#define cf_make_translation(...)         \
+	CF_EXPAND(_CF_MAKE_TRANSLATION_SELECT(__VA_ARGS__, cf_make_translation_f_f, cf_make_translation_v2)(__VA_ARGS__))
 #endif
 
 /**
@@ -1601,7 +1664,7 @@ CF_INLINE CF_V2 cf_project(CF_Halfspace h, CF_V2 p) { float d = cf_distance_hs(h
  * @brief    Returns the intersection point of two points to a plane.
  * @remarks  The distance to the plane are provided as `da` and `db`. You can compute these with e.g. `cf_distance_hs`, or instead
  *           call the similar function `cf_intersect_halfspace2`.
- * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_haflspace2 cf_intersect_haflspace3
+ * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_halfspace2 cf_intersect_halfspace3
  */
 CF_INLINE CF_V2 cf_intersect_halfspace(CF_V2 a, CF_V2 b, float da, float db) { float d = (da / (da - db)); CF_V2 ab = cf_sub(b, a); return cf_add(a, cf_v2(ab.x * d, ab.y * d)); }
 
@@ -1609,7 +1672,7 @@ CF_INLINE CF_V2 cf_intersect_halfspace(CF_V2 a, CF_V2 b, float da, float db) { f
  * @function cf_intersect_halfspace2
  * @category math
  * @brief    Returns the intersection point of two points to a plane.
- * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_haflspace2 cf_intersect_haflspace3
+ * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_halfspace2 cf_intersect_halfspace3
  */
 CF_INLINE CF_V2 cf_intersect_halfspace2(CF_Halfspace h, CF_V2 a, CF_V2 b) { return cf_intersect_halfspace(a, b, cf_distance_hs(h, a), cf_distance_hs(h, b)); }
 
@@ -1617,7 +1680,7 @@ CF_INLINE CF_V2 cf_intersect_halfspace2(CF_Halfspace h, CF_V2 a, CF_V2 b) { retu
  * @function cf_intersect_halfspace3
  * @category math
  * @brief    Returns the intersection point of two planes.
- * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_haflspace2 cf_intersect_haflspace3
+ * @related  CF_Halfspace cf_plane cf_origin cf_distance_hs cf_project cf_mul_tf_hs cf_mul_T_tf_hs cf_intersect_halfspace cf_intersect_halfspace2 cf_intersect_halfspace3
  */
 CF_INLINE CF_V2 cf_intersect_halfspace3(CF_Halfspace ha, CF_Halfspace hb) { CF_V2 a = {ha.n.x, hb.n.x}, b = {ha.n.y, hb.n.y}, c = {ha.d, hb.d}; float x = cf_det2(c, b) / cf_det2(a, b); float y = cf_det2(a, c) / cf_det2(a, b); return cf_v2(x, y); }
 
@@ -1893,7 +1956,7 @@ CF_INLINE CF_V2 cf_norm(CF_V2 a) { return cf_div(a, cf_len(a)); }
  *           the case of a zero vector.
  * @related  CF_V2 cf_len cf_distance cf_norm cf_safe_norm
  */
-CF_INLINE CF_V2 cf_safe_norm(CF_V2 a) { float sq = cf_dot(a, a); return sq ? cf_div(a, CF_SQRTF(sq)) : cf_v2(0, 0); }
+CF_INLINE CF_V2 cf_safe_norm(CF_V2 a) { float sq = cf_dot(a, a); return sq != 0.0f ? cf_div(a, CF_SQRTF(sq)) : cf_v2(0, 0); }
 
 /**
  * @function cf_reflect
@@ -2774,7 +2837,7 @@ CF_API bool CF_CALL cf_capsule_to_capsule(CF_Capsule A, CF_Capsule B);
  * @remarks  For information about _how_ two shapes are intersecting (and not just boolean result), see `cf_circle_to_poly_manifold`.
  * @related  CF_Circle CF_Poly cf_circle_to_poly cf_circle_to_poly_manifold
  */
-CF_API bool CF_CALL cf_circle_to_poly(CF_Circle A, const CF_Poly* B, const CF_Transform* bx);
+CF_API bool CF_CALL cf_circle_to_poly(CF_Circle A, const CF_Poly* B);
 
 /**
  * @function cf_aabb_to_poly
@@ -2783,7 +2846,7 @@ CF_API bool CF_CALL cf_circle_to_poly(CF_Circle A, const CF_Poly* B, const CF_Tr
  * @remarks  For information about _how_ two shapes are intersecting (and not just boolean result), see `cf_aabb_to_poly_manifold`.
  * @related  CF_Aabb CF_Poly cf_aabb_to_poly cf_aabb_to_poly_manifold
  */
-CF_API bool CF_CALL cf_aabb_to_poly(CF_Aabb A, const CF_Poly* B, const CF_Transform* bx);
+CF_API bool CF_CALL cf_aabb_to_poly(CF_Aabb A, const CF_Poly* B);
 
 /**
  * @function cf_capsule_to_poly
@@ -2792,7 +2855,7 @@ CF_API bool CF_CALL cf_aabb_to_poly(CF_Aabb A, const CF_Poly* B, const CF_Transf
  * @remarks  For information about _how_ two shapes are intersecting (and not just boolean result), see `cf_capsule_to_poly_manifold`.
  * @related  CF_Capsule CF_Poly cf_capsule_to_poly cf_capsule_to_poly_manifold
  */
-CF_API bool CF_CALL cf_capsule_to_poly(CF_Capsule A, const CF_Poly* B, const CF_Transform* bx);
+CF_API bool CF_CALL cf_capsule_to_poly(CF_Capsule A, const CF_Poly* B);
 
 /**
  * @function cf_poly_to_poly
@@ -2801,7 +2864,7 @@ CF_API bool CF_CALL cf_capsule_to_poly(CF_Capsule A, const CF_Poly* B, const CF_
  * @remarks  For information about _how_ two shapes are intersecting (and not just boolean result), see `cf_poly_to_poly_manifold`.
  * @related  CF_Poly cf_poly_to_poly cf_poly_to_poly_manifold
  */
-CF_API bool CF_CALL cf_poly_to_poly(const CF_Poly* A, const CF_Transform* ax, const CF_Poly* B, const CF_Transform* bx);
+CF_API bool CF_CALL cf_poly_to_poly(const CF_Poly* A, const CF_Poly* B);
 
 /**
  * @function cf_ray_to_circle
@@ -2845,7 +2908,7 @@ CF_API CF_Raycast CF_CALL cf_ray_to_capsule(CF_Ray A, CF_Capsule B);
  * @return   `CF_Raycast` results are placed here. See `CF_RayCast`.
  * @related  CF_Ray CF_Poly CF_Raycast cf_ray_to_circle cf_ray_to_aabb cf_ray_to_capsule cf_ray_to_poly
  */
-CF_API CF_Raycast CF_CALL cf_ray_to_poly(CF_Ray A, const CF_Poly* B, const CF_Transform* bx_ptr);
+CF_API CF_Raycast CF_CALL cf_ray_to_poly(CF_Ray A, const CF_Poly* B);
 
 /**
  * @function cf_circle_to_circle_manifold
@@ -2929,7 +2992,7 @@ CF_API CF_Manifold CF_CALL cf_capsule_to_capsule_manifold(CF_Capsule A, CF_Capsu
  * @remarks  This function is slightly slower than the boolean version `cf_circle_to_poly`.
  * @related  CF_Manifold CF_Circle CF_Poly cf_circle_to_circle_manifold cf_circle_to_aabb_manifold cf_circle_to_capsule_manifold cf_aabb_to_aabb_manifold cf_aabb_to_capsule_manifold cf_circle_to_poly_manifold cf_aabb_to_poly_manifold cf_capsule_to_poly_manifold cf_poly_to_poly_manifold
  */
-CF_API CF_Manifold CF_CALL cf_circle_to_poly_manifold(CF_Circle A, const CF_Poly* B, const CF_Transform* bx);
+CF_API CF_Manifold CF_CALL cf_circle_to_poly_manifold(CF_Circle A, const CF_Poly* B);
 
 /**
  * @function cf_aabb_to_poly_manifold
@@ -2941,7 +3004,7 @@ CF_API CF_Manifold CF_CALL cf_circle_to_poly_manifold(CF_Circle A, const CF_Poly
  * @remarks  This function is slightly slower than the boolean version `cf_aabb_to_poly`.
  * @related  CF_Manifold CF_Aabb CF_Poly cf_circle_to_circle_manifold cf_circle_to_aabb_manifold cf_circle_to_capsule_manifold cf_aabb_to_aabb_manifold cf_aabb_to_capsule_manifold cf_circle_to_poly_manifold cf_aabb_to_poly_manifold cf_capsule_to_poly_manifold cf_poly_to_poly_manifold
  */
-CF_API CF_Manifold CF_CALL cf_aabb_to_poly_manifold(CF_Aabb A, const CF_Poly* B, const CF_Transform* bx);
+CF_API CF_Manifold CF_CALL cf_aabb_to_poly_manifold(CF_Aabb A, const CF_Poly* B);
 
 /**
  * @function cf_capsule_to_poly_manifold
@@ -2953,7 +3016,7 @@ CF_API CF_Manifold CF_CALL cf_aabb_to_poly_manifold(CF_Aabb A, const CF_Poly* B,
  * @remarks  This function is slightly slower than the boolean version `cf_capsule_to_poly`.
  * @related  CF_Manifold CF_Capsule CF_Poly cf_circle_to_circle_manifold cf_circle_to_aabb_manifold cf_circle_to_capsule_manifold cf_aabb_to_aabb_manifold cf_aabb_to_capsule_manifold cf_circle_to_poly_manifold cf_aabb_to_poly_manifold cf_capsule_to_poly_manifold cf_poly_to_poly_manifold
  */
-CF_API CF_Manifold CF_CALL cf_capsule_to_poly_manifold(CF_Capsule A, const CF_Poly* B, const CF_Transform* bx);
+CF_API CF_Manifold CF_CALL cf_capsule_to_poly_manifold(CF_Capsule A, const CF_Poly* B);
 
 /**
  * @function cf_poly_to_poly_manifold
@@ -2965,14 +3028,14 @@ CF_API CF_Manifold CF_CALL cf_capsule_to_poly_manifold(CF_Capsule A, const CF_Po
  * @remarks  This function is slightly slower than the boolean version `cf_poly_to_poly`.
  * @related  CF_Manifold CF_Poly cf_circle_to_circle_manifold cf_circle_to_aabb_manifold cf_circle_to_capsule_manifold cf_aabb_to_aabb_manifold cf_aabb_to_capsule_manifold cf_circle_to_poly_manifold cf_aabb_to_poly_manifold cf_capsule_to_poly_manifold cf_poly_to_poly_manifold
  */
-CF_API CF_Manifold CF_CALL cf_poly_to_poly_manifold(const CF_Poly* A, const CF_Transform* ax, const CF_Poly* B, const CF_Transform* bx);
+CF_API CF_Manifold CF_CALL cf_poly_to_poly_manifold(const CF_Poly* A, const CF_Poly* B);
 
 /**
  * @struct   CF_GjkCache
  * @category collision
  * @brief    This struct is only for advanced usage of the `cf_gjk` function. See comments inside of the `cf_gjk` function for more details.
- * @remarks  Contains cached geometric information to speed up successive calls to `cf_gjk` where the shapes don't move much relatie to
- *           one other from one call to the next.
+ * @remarks  Contains cached geometric information to speed up successive calls to `cf_gjk` where the shapes don't move much relative to
+ *           one another from one call to the next.
  * @related  CF_GjkCache cf_gjk
  */
 typedef struct CF_GjkCache
@@ -2989,7 +3052,7 @@ typedef struct CF_GjkCache
 	/* An index into shape B. */
 	int iB[3];
 
-	/* The divisor (used in baryecentric coordinates internally) for the vertex B - A. */
+	/* The divisor (used in barycentric coordinates internally) for the vertex B - A. */
 	float div;
 } CF_GjkCache;
 // @end
@@ -3000,10 +3063,8 @@ typedef struct CF_GjkCache
  * @brief    Returns the distance between two shapes, and computes the closest two points of the shapes.
  * @param    A           The first shape.
  * @param    typeA       The `CF_ShapeType` of the first shape `A`.
- * @param    ax_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `A`.
  * @param    B           The second shape.
- * @param    typeA       The `CF_ShapeType` of the second shape `B`.
- * @param    bx_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `B`.
+ * @param    typeB       The `CF_ShapeType` of the second shape `B`.
  * @param    outA        The closest point on `A` to `B`. Not well defined if the two shapes are already intersecting.
  * @param    outB        The closest point on `B` to `A`. Not well defined if the two shapes are already intersecting.
  * @param    use_radius  True if you want to use the radius of any `CF_Circle` or `CF_Capsule` inputs, false to treat them as a point/line segment respectively (a radius of zero).
@@ -3011,14 +3072,14 @@ typedef struct CF_GjkCache
  * @param    cache       Can be `NULL`. An optional cache to a previous call of this function. See `CF_GjkCache` for details.
  * @return   Returns the distance between the two shapes.
  * @remarks  This is an advanced function, intended to be used by people who know what they're doing.
- *           
+ *
  *           The GJK function is sensitive to large shapes, since it internally will compute signed area values. `cf_gjk` is called throughout
  *           this file in many ways, so try to make sure all of your collision shapes are not gigantic. For example, try to keep the volume of
  *           all your shapes less than 100.0f. If you need large shapes, you should use tiny collision geometry for all function here, and simply
  *           render the geometry larger on-screen by scaling it up.
  * @related  cf_gjk CF_GjkCache CF_ShapeType
  */
-CF_API float CF_CALL cf_gjk(const void* A, CF_ShapeType typeA, const CF_Transform* ax_ptr, const void* B, CF_ShapeType typeB, const CF_Transform* bx_ptr, CF_V2* outA, CF_V2* outB, bool use_radius, int* iterations, CF_GjkCache* cache);
+CF_API float CF_CALL cf_gjk(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB, CF_V2* outA, CF_V2* outB, bool use_radius, int* iterations, CF_GjkCache* cache);
 
 /**
  * @struct   CF_ToiResult
@@ -3052,28 +3113,26 @@ typedef struct CF_ToiResult
  * @brief    Computes the time of impact of two shapes.
  * @param    A           The first shape.
  * @param    typeA       The `CF_ShapeType` of the first shape `A`.
- * @param    ax_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `A`.
  * @param    vA          The velocity of `A`.
  * @param    B           The second shape.
- * @param    typeA       The `CF_ShapeType` of the second shape `B`.
- * @param    bx_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `B`.
+ * @param    typeB       The `CF_ShapeType` of the second shape `B`.
  * @param    vB          The velocity of `B`.
  * @param    use_radius  True if you want to use the radius of any `CF_Circle` or `CF_Capsule` inputs, false to treat them as a point/line segment respectively (a radius of zero).
  * @return   Returns a `CF_ToiResult` containing information about the time of impact.
  * @remarks  This is an advanced function, intended to be used by people who know what they're doing.
- *           
+ *
  *           Computes the time of impact from shape A and shape B. The velocity of each shape is provided by `vA` and `vB` respectively. The shapes are
  *           _not_ allowed to rotate over time. The velocity is assumed to represent the change in motion from time 0 to time 1, and so the return value
  *           will be a number from 0 to 1. To move each shape to the colliding configuration, multiply `vA` and `vB` each by the return value.
- *           
+ *
  *           IMPORTANT NOTE
- *           
+ *
  *           The `cf_toi` function can be used to implement a "swept character controller", but it can be difficult to do so. Say we compute a time
  *           of impact with `cf_toi` and move the shapes to the time of impact, and adjust the velocity by zeroing out the velocity along the surface
  *           normal. If we then call `cf_toi` again, it will fail since the shapes will be considered to start in a colliding configuration. There are
  *           many styles of tricks to get around this problem, and all of them involve giving the next call to `cf_toi` some breathing room. It is
  *           recommended to use some variation of the following algorithm:
- *           
+ *
  *           1. Call `cf_toi`.
  *           2. Move the shapes to the TOI.
  *           3. Slightly inflate the size of one, or both, of the shapes so they will be intersecting.
@@ -3084,37 +3143,32 @@ typedef struct CF_ToiResult
  *           5. Gently push the shapes apart. This will give the next call to `cf_toi` some breathing room.
  * @related  CF_ToiResult cf_toi CF_ShapeType
  */
-CF_API CF_ToiResult CF_CALL cf_toi(const void* A, CF_ShapeType typeA, const CF_Transform* ax_ptr, CF_V2 vA, const void* B, CF_ShapeType typeB, const CF_Transform* bx_ptr, CF_V2 vB, int use_radius);
+CF_API CF_ToiResult CF_CALL cf_toi(const void* A, CF_ShapeType typeA, CF_V2 vA, const void* B, CF_ShapeType typeB, CF_V2 vB, int use_radius);
 
 /**
  * @function cf_collided
  * @category collision
- * @brief    Returns a true if two shapes collided.
+ * @brief    Returns true if two shapes collided.
  * @param    A           The first shape.
  * @param    typeA       The `CF_ShapeType` of the first shape `A`.
- * @param    ax_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `A`.
- * @param    vA          The velocity of `A`.
  * @param    B           The second shape.
- * @param    typeA       The `CF_ShapeType` of the second shape `B`.
- * @param    bx_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `B`.
- * @related  cf_collided cf_collide CF_Transform CF_ShapeType
+ * @param    typeB       The `CF_ShapeType` of the second shape `B`.
+ * @related  cf_collided cf_collide CF_ShapeType
  */
-CF_API int CF_CALL cf_collided(const void* A, const CF_Transform* ax, CF_ShapeType typeA, const void* B, const CF_Transform* bx, CF_ShapeType typeB);
+CF_API int CF_CALL cf_collided(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB);
 
 /**
  * @function cf_collide
  * @category collision
  * @brief    Computes a `CF_Manifold` between two shapes.
  * @param    A           The first shape.
- * @param    ax          Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `A`.
  * @param    typeA       The `CF_ShapeType` of the first shape `A`.
  * @param    B           The second shape.
- * @param    bx          Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `B`.
- * @param    typeA       The `CF_ShapeType` of the second shape `B`.
+ * @param    typeB       The `CF_ShapeType` of the second shape `B`.
  * @param    m           Contains information about the intersection. `m->count` is set to zero for no-intersection. See `CF_Manifold` for details.
- * @related  cf_collided cf_collide CF_Transform CF_ShapeType CF_Manifold
+ * @related  cf_collided cf_collide CF_ShapeType CF_Manifold
  */
-CF_API void CF_CALL cf_collide(const void* A, const CF_Transform* ax, CF_ShapeType typeA, const void* B, const CF_Transform* bx, CF_ShapeType typeB, CF_Manifold* m);
+CF_API void CF_CALL cf_collide(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB, CF_Manifold* m);
 
 /**
  * @function cf_cast_ray
@@ -3123,12 +3177,11 @@ CF_API void CF_CALL cf_collide(const void* A, const CF_Transform* ax, CF_ShapeTy
  * @param    A           The ray.
  * @param    B           The shape.
  * @param    typeB       The `CF_ShapeType` of the shape `B`.
- * @param    bx_ptr      Can be `NULL` to represent an identity transform. An optional pointer to a `CF_Transform` to transform `B`.
  * @param    out         Can be `NULL`. `CF_Raycast` results are placed here (contains normal + time of impact).
  * @return   Returns true if the ray hit the shape.
- * @related  CF_Ray CF_Raycast CF_Transform CF_ShapeType cf_cast_ray
+ * @related  CF_Ray CF_Raycast CF_ShapeType cf_cast_ray
  */
-CF_API bool CF_CALL cf_cast_ray(CF_Ray A, const void* B, const CF_Transform* bx, CF_ShapeType typeB, CF_Raycast* out);
+CF_API bool CF_CALL cf_cast_ray(CF_Ray A, const void* B, CF_ShapeType typeB, CF_Raycast* out);
 
 #ifdef __cplusplus
 }
@@ -3345,15 +3398,15 @@ CF_INLINE bool circle_to_capsule(CF_Circle A, CF_Capsule B) { return cf_circle_t
 CF_INLINE bool aabb_to_aabb(CF_Aabb A, CF_Aabb B) { return cf_aabb_to_aabb(A, B); }
 CF_INLINE bool aabb_to_capsule(CF_Aabb A, CF_Capsule B) { return cf_aabb_to_capsule(A, B); }
 CF_INLINE bool capsule_to_capsule(CF_Capsule A, CF_Capsule B) { return cf_capsule_to_capsule(A, B); }
-CF_INLINE bool circle_to_poly(CF_Circle A, const CF_Poly* B, const CF_Transform* bx) { return cf_circle_to_poly(A, B, bx); }
-CF_INLINE bool aabb_to_poly(CF_Aabb A, const CF_Poly* B, const CF_Transform* bx) { return cf_aabb_to_poly(A, B, bx); }
-CF_INLINE bool capsule_to_poly(CF_Capsule A, const CF_Poly* B, const CF_Transform* bx) { return cf_capsule_to_poly(A, B, bx); }
-CF_INLINE bool poly_to_poly(const CF_Poly* A, const CF_Transform* ax, const CF_Poly* B, const CF_Transform* bx) { return cf_poly_to_poly(A, ax, B, bx); }
+CF_INLINE bool circle_to_poly(CF_Circle A, const CF_Poly* B) { return cf_circle_to_poly(A, B); }
+CF_INLINE bool aabb_to_poly(CF_Aabb A, const CF_Poly* B) { return cf_aabb_to_poly(A, B); }
+CF_INLINE bool capsule_to_poly(CF_Capsule A, const CF_Poly* B) { return cf_capsule_to_poly(A, B); }
+CF_INLINE bool poly_to_poly(const CF_Poly* A, const CF_Poly* B) { return cf_poly_to_poly(A, B); }
 
 CF_INLINE CF_Raycast ray_to_circle(CF_Ray A, CF_Circle B) { return cf_ray_to_circle(A, B); }
 CF_INLINE CF_Raycast ray_to_aabb(CF_Ray A, CF_Aabb B) { return cf_ray_to_aabb(A, B); }
 CF_INLINE CF_Raycast ray_to_capsule(CF_Ray A, CF_Capsule B) { return cf_ray_to_capsule(A, B); }
-CF_INLINE CF_Raycast ray_to_poly(CF_Ray A, const CF_Poly* B, const CF_Transform* bx_ptr = NULL) { return cf_ray_to_poly(A, B, bx_ptr); }
+CF_INLINE CF_Raycast ray_to_poly(CF_Ray A, const CF_Poly* B) { return cf_ray_to_poly(A, B); }
 
 CF_INLINE CF_Manifold circle_to_circle_manifold(CF_Circle A, CF_Circle B) { return cf_circle_to_circle_manifold(A, B); }
 CF_INLINE CF_Manifold circle_to_aabb_manifold(CF_Circle A, CF_Aabb B) { return cf_circle_to_aabb_manifold(A, B); }
@@ -3361,24 +3414,24 @@ CF_INLINE CF_Manifold circle_to_capsule_manifold(CF_Circle A, CF_Capsule B) { re
 CF_INLINE CF_Manifold aabb_to_aabb_manifold(CF_Aabb A, CF_Aabb B) { return cf_aabb_to_aabb_manifold(A, B); }
 CF_INLINE CF_Manifold aabb_to_capsule_manifold(CF_Aabb A, CF_Capsule B) { return cf_aabb_to_capsule_manifold(A, B); }
 CF_INLINE CF_Manifold capsule_to_capsule_manifold(CF_Capsule A, CF_Capsule B) { return cf_capsule_to_capsule_manifold(A, B); }
-CF_INLINE CF_Manifold circle_to_poly_manifold(CF_Circle A, const CF_Poly* B, const CF_Transform* bx) { return cf_circle_to_poly_manifold(A, B, bx); }
-CF_INLINE CF_Manifold aabb_to_poly_manifold(CF_Aabb A, const CF_Poly* B, const CF_Transform* bx) { return cf_aabb_to_poly_manifold(A, B, bx); }
-CF_INLINE CF_Manifold capsule_to_poly_manifold(CF_Capsule A, const CF_Poly* B, const CF_Transform* bx) { return cf_capsule_to_poly_manifold(A, B, bx); }
-CF_INLINE CF_Manifold poly_to_poly_manifold(const CF_Poly* A, const CF_Transform* ax, const CF_Poly* B, const CF_Transform* bx) { return cf_poly_to_poly_manifold(A, ax, B, bx); }
+CF_INLINE CF_Manifold circle_to_poly_manifold(CF_Circle A, const CF_Poly* B) { return cf_circle_to_poly_manifold(A, B); }
+CF_INLINE CF_Manifold aabb_to_poly_manifold(CF_Aabb A, const CF_Poly* B) { return cf_aabb_to_poly_manifold(A, B); }
+CF_INLINE CF_Manifold capsule_to_poly_manifold(CF_Capsule A, const CF_Poly* B) { return cf_capsule_to_poly_manifold(A, B); }
+CF_INLINE CF_Manifold poly_to_poly_manifold(const CF_Poly* A, const CF_Poly* B) { return cf_poly_to_poly_manifold(A, B); }
 
-CF_INLINE float gjk(const void* A, CF_ShapeType typeA, const CF_Transform* ax_ptr, const void* B, CF_ShapeType typeB, const CF_Transform* bx_ptr, v2* outA, v2* outB, int use_radius, int* iterations, CF_GjkCache* cache)
+CF_INLINE float gjk(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB, v2* outA, v2* outB, int use_radius, int* iterations, CF_GjkCache* cache)
 {
-	return cf_gjk(A, typeA, ax_ptr, B, typeB, bx_ptr, (CF_V2*)outA, (CF_V2*)outB, use_radius, iterations, cache);
+	return cf_gjk(A, typeA, B, typeB, (CF_V2*)outA, (CF_V2*)outB, use_radius, iterations, cache);
 }
 
-CF_INLINE CF_ToiResult toi(const void* A, CF_ShapeType typeA, const CF_Transform* ax_ptr, v2 vA, const void* B, CF_ShapeType typeB, const CF_Transform* bx_ptr, v2 vB, int use_radius)
+CF_INLINE CF_ToiResult toi(const void* A, CF_ShapeType typeA, v2 vA, const void* B, CF_ShapeType typeB, v2 vB, int use_radius)
 {
-	return cf_toi(A, typeA, ax_ptr, vA, B, typeB, bx_ptr, vB, use_radius);
+	return cf_toi(A, typeA, vA, B, typeB, vB, use_radius);
 }
 
-CF_INLINE int collided(const void* A, const CF_Transform* ax, CF_ShapeType typeA, const void* B, const CF_Transform* bx, CF_ShapeType typeB) { return cf_collided(A, ax, typeA, B, bx, typeB); }
-CF_INLINE void collide(const void* A, const CF_Transform* ax, CF_ShapeType typeA, const void* B, const CF_Transform* bx, CF_ShapeType typeB, CF_Manifold* m) { return cf_collide(A, ax, typeA, B, bx, typeB, m); }
-CF_INLINE bool cast_ray(CF_Ray A, const void* B, const CF_Transform* bx, CF_ShapeType typeB, CF_Raycast* out) { return cf_cast_ray(A, B, bx, typeB, out); }
+CF_INLINE int collided(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB) { return cf_collided(A, typeA, B, typeB); }
+CF_INLINE void collide(const void* A, CF_ShapeType typeA, const void* B, CF_ShapeType typeB, CF_Manifold* m) { return cf_collide(A, typeA, B, typeB, m); }
+CF_INLINE bool cast_ray(CF_Ray A, const void* B, CF_ShapeType typeB, CF_Raycast* out) { return cf_cast_ray(A, B, typeB, out); }
 
 }
 

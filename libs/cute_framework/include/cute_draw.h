@@ -26,29 +26,29 @@ extern "C" {
  * @category draw
  * @brief    Draws a sprite.
  * @param    sprite     The sprite.
- * @related  cf_draw_sprite cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
+ * @related  cf_draw_sprite cf_draw_quad cf_draw_to cf_app_draw_onto_screen
  */
 CF_API void CF_CALL cf_draw_sprite(const CF_Sprite* sprite);
 
 
 /**
-* @function cf_draw_sprite_9_slice
-* @category draw
-* @brief    Draws a sprite using 9 slice, the top, left, right and bottom sides will be stretched.
-*           if no center patch uvs are defined then this defaults back to cf_draw_sprite
-* @param    sprite     The sprite.
-* @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
-*/
+ * @function cf_draw_sprite_9_slice
+ * @category draw
+ * @brief    Draws a sprite using 9 slice, the top, left, right and bottom sides will be stretched.
+ *           if no center patch uvs are defined then this defaults back to cf_draw_sprite
+ * @param    sprite     The sprite.
+ * @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad cf_draw_to cf_app_draw_onto_screen
+ */
 CF_API void CF_CALL cf_draw_sprite_9_slice(const CF_Sprite* sprite);
 
 /**
-* @function cf_draw_sprite_9_slice_tiled
-* @category draw
-* @brief    Draws a sprite using 9 slice, the top, left, right and bottom will be tiled.
-*           if no center patch uvs are defined then this defaults back to cf_draw_sprite
-* @param    sprite     The sprite.
-* @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
-*/
+ * @function cf_draw_sprite_9_slice_tiled
+ * @category draw
+ * @brief    Draws a sprite using 9 slice, the top, left, right and bottom will be tiled.
+ *           if no center patch uvs are defined then this defaults back to cf_draw_sprite
+ * @param    sprite     The sprite.
+ * @related  cf_draw_sprite cf_draw_sprite_9_slice cf_draw_sprite_9_slice_tiled cf_draw_quad cf_draw_to cf_app_draw_onto_screen
+ */
 CF_API void CF_CALL cf_draw_sprite_9_slice_tiled(const CF_Sprite* sprite);
 
 /**
@@ -58,7 +58,7 @@ CF_API void CF_CALL cf_draw_sprite_9_slice_tiled(const CF_Sprite* sprite);
  * @param    sprite     The sprite.
  * @remarks  This function ensures the sprite is fully loaded into memory without actually rendering anything.
  *           This is a good way to avoid disk io at inconvenient times.
- * @related  cf_draw_sprite cf_draw_quad draw_look_at cf_draw_to cf_app_draw_onto_screen
+ * @related  cf_draw_sprite cf_draw_quad cf_draw_to cf_app_draw_onto_screen
  */
 CF_API void CF_CALL cf_draw_prefetch(const CF_Sprite* sprite);
 
@@ -113,76 +113,76 @@ CF_API void CF_CALL cf_draw_quad_fill(CF_Aabb bb, float chubbiness);
 CF_API void CF_CALL cf_draw_quad_fill2(CF_V2 p0, CF_V2 p1, CF_V2 p2, CF_V2 p3, float chubbiness);
 
 /**
-* @function cf_draw_box
-* @category draw
-* @brief    Draws a quad wireframe.
-* @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
-* @param    thickness  The thickness of each line to draw.
-* @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
-* @remarks  This is an alias for `cf_draw_quad`
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box
+ * @category draw
+ * @brief    Draws a quad wireframe.
+ * @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
+ * @param    thickness  The thickness of each line to draw.
+ * @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
+ * @remarks  This is an alias for `cf_draw_quad`
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_INLINE void cf_draw_box(CF_Aabb bb, float thickness, float chubbiness) { cf_draw_quad(bb, thickness, chubbiness); }
 
 /**
-* @function cf_draw_box_rounded
-* @category draw
-* @brief    Draws a quad wireframe with rounded corners.
-* @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
-* @param    thickness  The thickness of each line to draw.
-* @param    radius     The radius to use for rounding.
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box_rounded
+ * @category draw
+ * @brief    Draws a quad wireframe with rounded corners.
+ * @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
+ * @param    thickness  The thickness of each line to draw.
+ * @param    radius     The radius to use for rounding.
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_API void CF_CALL cf_draw_box_rounded(CF_Aabb bb, float thickness, float radius);
 
 /**
-* @function cf_draw_box2
-* @category draw
-* @brief    Draws a quad wireframe.
-* @param    p0         A corner of the quad.
-* @param    p1         A corner of the quad.
-* @param    p2         A corner of the quad.
-* @param    p3         A corner of the quad.
-* @param    thickness  The thickness of each line to draw.
-* @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
-* @remarks  All points `p0` through `p3` are encouraged to be in counter-clockwise order. This is an alias for `cf_draw_quad2`
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box2
+ * @category draw
+ * @brief    Draws a quad wireframe.
+ * @param    p0         A corner of the quad.
+ * @param    p1         A corner of the quad.
+ * @param    p2         A corner of the quad.
+ * @param    p3         A corner of the quad.
+ * @param    thickness  The thickness of each line to draw.
+ * @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
+ * @remarks  All points `p0` through `p3` are encouraged to be in counter-clockwise order. This is an alias for `cf_draw_quad2`
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_INLINE void cf_draw_box2(CF_V2 p0, CF_V2 p1, CF_V2 p2, CF_V2 p3, float thickness, float chubbiness) { cf_draw_quad2(p0, p1, p2, p3, thickness,  chubbiness); }
 
 /**
-* @function cf_draw_box_fill
-* @category draw
-* @brief    Draws a quad.
-* @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
-* @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
-* @remarks  This is an alias for `cf_draw_quad_fill`
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box_fill
+ * @category draw
+ * @brief    Draws a quad.
+ * @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
+ * @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
+ * @remarks  This is an alias for `cf_draw_quad_fill`
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_INLINE void cf_draw_box_fill(CF_Aabb bb, float chubbiness) { cf_draw_quad_fill(bb, chubbiness); }
 
 /**
-* @function cf_draw_box_fill2
-* @category draw
-* @brief    Draws a quad.
-* @param    p0         A corner of the quad.
-* @param    p1         A corner of the quad.
-* @param    p2         A corner of the quad.
-* @param    p3         A corner of the quad.
-* @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
-* @remarks  All points `p0` through `p3` are encouraged to be in counter-clockwise order. This is an alias for `cf_draw_quad_fill2`
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box_fill2
+ * @category draw
+ * @brief    Draws a quad.
+ * @param    p0         A corner of the quad.
+ * @param    p1         A corner of the quad.
+ * @param    p2         A corner of the quad.
+ * @param    p3         A corner of the quad.
+ * @param    chubbiness Inflates the shape, similar to corner-rounding. Makes the shape chubbier.
+ * @remarks  All points `p0` through `p3` are encouraged to be in counter-clockwise order. This is an alias for `cf_draw_quad_fill2`
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_INLINE void cf_draw_box_fill2(CF_V2 p0, CF_V2 p1, CF_V2 p2, CF_V2 p3, float chubbiness) { cf_draw_quad_fill2(p0, p1, p2, p3, chubbiness); }
 
 /**
-* @function cf_draw_box_rounded_fill
-* @category draw
-* @brief    Draws a quad with rounded corners.
-* @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
-* @param    radius     The radius to use for rounding.
-* @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
-*/
+ * @function cf_draw_box_rounded_fill
+ * @category draw
+ * @brief    Draws a quad with rounded corners.
+ * @param    bb         The AABB (Axis-Aligned Bounding Box) to draw a quad over.
+ * @param    radius     The radius to use for rounding.
+ * @related  cf_draw_quad cf_draw_quad2 cf_draw_quad_fill cf_draw_quad_fill2
+ */
 CF_API void CF_CALL cf_draw_box_rounded_fill(CF_Aabb bb, float radius);
 
 /**
@@ -377,7 +377,7 @@ CF_API void CF_CALL cf_draw_bezier_line2(CF_V2 a, CF_V2 c0, CF_V2 c1, CF_V2 b, i
  * @param    b            The end point.
  * @param    thickness    The thickness of the line to draw.
  * @param    arrow_width  The width of the arrow to draw.
- * @remarks  This function is intended only for debug purposes. It's implemented in naive way so the
+ * @remarks  This function is intended only for debug purposes. It's implemented in a naive way so the
  *           arrow shaft will overdraw atop the arrow head. This will become visible if the arrow is
  *           drawn with any transparency.
  * @related  cf_draw_line cf_draw_polyline cf_draw_bezier_line cf_draw_bezier_line2 cf_draw_arrow
@@ -444,65 +444,38 @@ CF_API CF_Color CF_CALL cf_draw_pop_color(void);
 CF_API CF_Color CF_CALL cf_draw_peek_color(void);
 
 /**
- * @function cf_draw_push_antialias
+ * @function cf_draw_push_shape_aa
  * @category draw
- * @brief    Pushes whether or not to apply antialiasing.
- * @param    antialias  True to antialias, false otherwise.
- * @remarks  Various shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
- *           but looks much smoother.
- * @related  cf_draw_push_antialias cf_draw_pop_antialias cf_draw_peek_antialias
+ * @brief    Pushes the shape antialias scale.
+ * @param    aa         Antialias scale. 0 turns off antialiasing, non-zero values enable antialiasing at that scale. Default is 1.5.
+ * @remarks  Shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
+ *           but looks much smoother. A larger number makes the borders of shapes blurrier. The number probably shouldn't
+ *           be more than 2 or 3 for most cases. This only affects shapes, not text or sprites.
+ * @related  cf_draw_push_shape_aa cf_draw_pop_shape_aa cf_draw_peek_shape_aa
  */
-CF_API void CF_CALL cf_draw_push_antialias(bool antialias);
+CF_API void CF_CALL cf_draw_push_shape_aa(float aa);
 
 /**
- * @function cf_draw_pop_antialias
+ * @function cf_draw_pop_shape_aa
  * @category draw
- * @brief    Pops and returns the last antialias state.
- * @remarks  Various shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
- *           but looks much smoother.
- * @related  cf_draw_push_antialias cf_draw_pop_antialias cf_draw_peek_antialias
+ * @brief    Pops and returns the last shape antialias scale.
+ * @remarks  Shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
+ *           but looks much smoother. A larger number makes the borders of shapes blurrier. Default is 1.5, 0 turns off antialiasing.
+ *           This only affects shapes, not text or sprites.
+ * @related  cf_draw_push_shape_aa cf_draw_pop_shape_aa cf_draw_peek_shape_aa
  */
-CF_API bool CF_CALL cf_draw_pop_antialias(void);
+CF_API float CF_CALL cf_draw_pop_shape_aa(void);
 
 /**
- * @function cf_draw_peek_antialias
+ * @function cf_draw_peek_shape_aa
  * @category draw
- * @brief    Returns the last antialias state.
- * @remarks  Various shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
- *           but looks much smoother.
- * @related  cf_draw_push_antialias cf_draw_pop_antialias cf_draw_peek_antialias
+ * @brief    Returns the last shape antialias scale.
+ * @remarks  Shape drawing functions can be drawn in antialiased mode, or in plain mode. Antialiasing is slightly slower,
+ *           but looks much smoother. A larger number makes the borders of shapes blurrier. Default is 1.5, 0 turns off antialiasing.
+ *           This only affects shapes, not text or sprites.
+ * @related  cf_draw_push_shape_aa cf_draw_pop_shape_aa cf_draw_peek_shape_aa
  */
-CF_API bool CF_CALL cf_draw_peek_antialias(void);
-
-/**
- * @function cf_draw_push_antialias_scale
- * @category draw
- * @brief    Returns the last antialias scale.
- * @remarks  Antialias scale controls how much antialiasing will be used. A larger number makes the borders of shapes blurry.
- *           The number must be greater than 0, but probably not more than 2 or 3 for most cases. The default is 1.5.
- * @related  cf_draw_push_antialias_scale cf_draw_pop_antialias_scale cf_draw_peek_antialias_scale
- */
-CF_API void CF_CALL cf_draw_push_antialias_scale(float scale);
-
-/**
- * @function cf_draw_pop_antialias_scale
- * @category draw
- * @brief    Pops and returns the last antialias scale.
- * @remarks  Antialias scale controls how much antialiasing will be used. A larger number makes the borders of shapes blurry.
- *           The number must be greater than 0, but probably not more than 2 or 3 for most cases. The default is 1.5.
- * @related  cf_draw_push_antialias_scale cf_draw_pop_antialias_scale cf_draw_peek_antialias_scale
- */
-CF_API float CF_CALL cf_draw_pop_antialias_scale(void);
-
-/**
- * @function cf_draw_peek_antialias_scale
- * @category draw
- * @brief    Returns the last antialias scale.
- * @remarks  Antialias scale controls how much antialiasing will be used. A larger number makes the borders of shapes blurry.
- *           The number must be greater than 0, but probably not more than 2 or 3 for most cases. The default is 1.5.
- * @related  cf_draw_push_antialias_scale cf_draw_pop_antialias_scale cf_draw_peek_antialias_scale
- */
-CF_API float CF_CALL cf_draw_peek_antialias_scale(void);
+CF_API float CF_CALL cf_draw_peek_shape_aa(void);
 
 /**
  * @function cf_draw_push_vertex_attributes
@@ -541,6 +514,73 @@ CF_API CF_Color CF_CALL cf_draw_pop_vertex_attributes(void);
  * @related  CF_Vertex cf_draw_push_vertex_attributes cf_draw_push_vertex_attributes2 cf_draw_pop_vertex_attributes cf_draw_peek_vertex_attributes
  */
 CF_API CF_Color CF_CALL cf_draw_peek_vertex_attributes(void);
+
+/**
+ * @function cf_draw_push_tri_colors
+ * @category draw
+ * @brief    Pushes per-vertex colors for triangle drawing.
+ * @param    c0          Color for the first vertex (p0).
+ * @param    c1          Color for the second vertex (p1).
+ * @param    c2          Color for the third vertex (p2).
+ * @remarks  When active, triangles drawn with `cf_draw_tri_fill` will interpolate colors
+ *           across the triangle surface between c0, c1, and c2 at vertices p0, p1, and p2.
+ *           This only works when chubbiness is 0 and antialiasing is disabled.
+ * @related  cf_draw_push_tri_colors cf_draw_pop_tri_colors cf_draw_peek_tri_colors cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_push_tri_colors(CF_Color c0, CF_Color c1, CF_Color c2);
+
+/**
+ * @function cf_draw_pop_tri_colors
+ * @category draw
+ * @brief    Pops the per-vertex triangle color state.
+ * @related  cf_draw_push_tri_colors cf_draw_pop_tri_colors cf_draw_peek_tri_colors cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_pop_tri_colors(void);
+
+/**
+ * @function cf_draw_peek_tri_colors
+ * @category draw
+ * @brief    Returns the current per-vertex triangle color state.
+ * @param    c0          Output pointer for color of first vertex (can be NULL).
+ * @param    c1          Output pointer for color of second vertex (can be NULL).
+ * @param    c2          Output pointer for color of third vertex (can be NULL).
+ * @related  cf_draw_push_tri_colors cf_draw_pop_tri_colors cf_draw_peek_tri_colors cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_peek_tri_colors(CF_Color* c0, CF_Color* c1, CF_Color* c2);
+
+/**
+ * @function cf_draw_push_tri_attributes
+ * @category draw
+ * @brief    Pushes per-vertex attributes for triangle drawing.
+ * @param    a0          Attributes for the first vertex (p0).
+ * @param    a1          Attributes for the second vertex (p1).
+ * @param    a2          Attributes for the third vertex (p2).
+ * @remarks  When active, triangles drawn with `cf_draw_tri_fill` will interpolate attributes
+ *           across the triangle surface between a0, a1, and a2 at vertices p0, p1, and p2.
+ *           This is useful for custom shaders that need per-vertex data (UVs, blend weights, etc.).
+ *           This only works when chubbiness is 0 and antialiasing is disabled.
+ * @related  cf_draw_push_tri_attributes cf_draw_pop_tri_attributes cf_draw_peek_tri_attributes cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_push_tri_attributes(CF_Color a0, CF_Color a1, CF_Color a2);
+
+/**
+ * @function cf_draw_pop_tri_attributes
+ * @category draw
+ * @brief    Pops the per-vertex triangle attribute state.
+ * @related  cf_draw_push_tri_attributes cf_draw_pop_tri_attributes cf_draw_peek_tri_attributes cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_pop_tri_attributes(void);
+
+/**
+ * @function cf_draw_peek_tri_attributes
+ * @category draw
+ * @brief    Returns the current per-vertex triangle attribute state.
+ * @param    a0          Output pointer for attributes of first vertex (can be NULL).
+ * @param    a1          Output pointer for attributes of second vertex (can be NULL).
+ * @param    a2          Output pointer for attributes of third vertex (can be NULL).
+ * @related  cf_draw_push_tri_attributes cf_draw_pop_tri_attributes cf_draw_peek_tri_attributes cf_draw_tri_fill
+ */
+CF_API void CF_CALL cf_draw_peek_tri_attributes(CF_Color* a0, CF_Color* a1, CF_Color* a2);
 
 /**
  * @struct   CF_Vertex
@@ -609,8 +649,8 @@ typedef struct CF_Vertex
  *
  *           Call `cf_set_vertex_callback` to setup your callback.
  *
- *           There is no adjecancy info provided. If you need to know which triangles connect to others you
- *           should probably redesign your feature to not require adjecancy information, or use your own custom
+ *           There is no adjacency info provided. If you need to know which triangles connect to others you
+ *           should probably redesign your feature to not require adjacency information, or use your own custom
  *           rendering solution. With a custom solution you may use low-level graphics in cute_graphics.h, where
  *           any adjacency info can be controlled 100% by you a-priori.
  * @related  CF_Vertex CF_VertexFn cf_set_vertex_callback
@@ -1024,7 +1064,7 @@ typedef bool (CF_TextEffectFn)(CF_TextEffect* fx);
  *           When registering a custom text effect, any parameters in the string will be stored for you
  *           automatically. You only need to fetch them with the appropriate cf_text_effect_get*** function.
  *           Note: You can also setup parameters for markup as strings, not just numbers/colors. Example: `<color=#2c5ee8 metadata=\"Just some string.\">blue text</color>`,
- *           where the `color` markup contains a parameter called `metadata` and a strinf value of `"Just some string."`.
+ *           where the `color` markup contains a parameter called `metadata` and a string value of `"Just some string."`.
  * @related  CF_TextEffect CF_TextEffectFn cf_text_effect_register cf_text_effect_get_number cf_text_effect_get_color cf_text_effect_get_string
  */
 CF_API void CF_CALL cf_text_effect_register(const char* name, CF_TextEffectFn* fn);
@@ -1088,7 +1128,7 @@ typedef struct CF_MarkupInfo
 	/* @member The number of `CF_Aabb`'s in `bounds`. */
 	int bounds_count;
 
-	/* @member An arry of `CF_Aabb`'s, one per line the `text` string provided in the `cf_text_markup_info_fn` callback. */
+	/* @member An array of `CF_Aabb`'s, one per line the `text` string provided in the `cf_text_markup_info_fn` callback. */
 	CF_Aabb* bounds;
 } CF_MarkupInfo;
 // @end
@@ -1240,7 +1280,7 @@ CF_API CF_RenderState CF_CALL cf_draw_peek_render_state(void);
  *           can likely get away with 4096 on most devices. Larger internal atlases can be useful to decrease the number of
  *           draw calls used, and also enables support for high-res image rendering.
  *
- *           Please not you should put in power of 2 atlases sizes to make the hardware happy. Here are the recommended range
+ *           Please note you should put in power of 2 atlases sizes to make the hardware happy. Here are the recommended range
  *           of sizes available:
  *
  *           - 256
@@ -1348,6 +1388,72 @@ CF_API bool CF_CALL cf_draw_pop_alpha_discard(void);
  * @related  TODO
  */
 CF_API bool CF_CALL cf_draw_peek_alpha_discard(void);
+
+/**
+ * @enum     CF_DrawFilterMode
+ * @category draw
+ * @brief    Filter modes for the draw system's texture sampling.
+ * @related  CF_DrawFilterMode cf_draw_filter_mode_to_string cf_draw_push_filter cf_draw_pop_filter cf_draw_peek_filter
+ */
+#define CF_DRAW_FILTER_MODE_DEFS \
+	/* @entry Nearest-neighbor filtering. Good for pixel art. Uses hardware nearest. */                             \
+	CF_ENUM(DRAW_FILTER_NEAREST, 0)                                                                                 \
+	/* @entry Linear (bilinear) filtering. Uses hardware linear. */                                                 \
+	CF_ENUM(DRAW_FILTER_LINEAR,  1)                                                                                 \
+	/* @entry Smooth filtering. Uses hardware linear combined with a shader-based smooth UV interpolation. */       \
+	CF_ENUM(DRAW_FILTER_SMOOTH,  2)                                                                                 \
+	/* @end */
+
+typedef enum CF_DrawFilterMode
+{
+#define CF_ENUM(K, V) CF_##K = V,
+	CF_DRAW_FILTER_MODE_DEFS
+#undef CF_ENUM
+} CF_DrawFilterMode;
+
+/**
+ * @function cf_draw_filter_mode_to_string
+ * @category draw
+ * @brief    Returns a `CF_DrawFilterMode` converted to a C string.
+ * @related  CF_DrawFilterMode cf_draw_filter_mode_to_string cf_draw_push_filter cf_draw_pop_filter cf_draw_peek_filter
+ */
+CF_INLINE const char* cf_draw_filter_mode_to_string(CF_DrawFilterMode mode) {
+	switch (mode) {
+#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+		CF_DRAW_FILTER_MODE_DEFS
+#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @function cf_draw_push_filter
+ * @category draw
+ * @brief    Sets the texture filtering mode for the draw system.
+ * @param    mode       The filter mode to use. See `CF_DrawFilterMode`.
+ * @remarks  NEAREST uses hardware nearest-neighbor filtering, good for pixel art. LINEAR uses hardware bilinear filtering.
+ *           SMOOTH uses hardware linear combined with shader-based smooth UV interpolation for high quality upscaling.
+ * @related  CF_DrawFilterMode cf_draw_push_filter cf_draw_pop_filter cf_draw_peek_filter
+ */
+CF_API void CF_CALL cf_draw_push_filter(CF_DrawFilterMode mode);
+
+/**
+ * @function cf_draw_pop_filter
+ * @category draw
+ * @brief    Pops the texture filtering mode stack.
+ * @return   Returns the popped filter mode.
+ * @related  CF_DrawFilterMode cf_draw_push_filter cf_draw_pop_filter cf_draw_peek_filter
+ */
+CF_API CF_DrawFilterMode CF_CALL cf_draw_pop_filter(void);
+
+/**
+ * @function cf_draw_peek_filter
+ * @category draw
+ * @brief    Returns the current texture filtering mode without popping the stack.
+ * @return   Returns the current filter mode.
+ * @related  CF_DrawFilterMode cf_draw_push_filter cf_draw_pop_filter cf_draw_peek_filter
+ */
+CF_API CF_DrawFilterMode CF_CALL cf_draw_peek_filter(void);
 
 /**
  * @function cf_draw_set_texture
@@ -1736,6 +1842,8 @@ CF_INLINE void draw_sprite_9_slice_tiled(const CF_Sprite* sprite) { cf_draw_spri
 CF_INLINE void draw_sprite_9_slice_tiled(const CF_Sprite& sprite) { cf_draw_sprite_9_slice_tiled(&sprite); }
 CF_INLINE void sprite_draw_9_slice_tiled(const CF_Sprite* sprite) { cf_draw_sprite_9_slice_tiled(sprite); }
 CF_INLINE void sprite_draw_9_slice_tiled(const CF_Sprite& sprite) { cf_draw_sprite_9_slice_tiled(&sprite); }
+CF_INLINE void draw_prefetch(const CF_Sprite* sprite) { cf_draw_prefetch(sprite); }
+CF_INLINE void draw_prefetch(const CF_Sprite& sprite) { cf_draw_prefetch(&sprite); }
 CF_INLINE void draw_quad(CF_Aabb bb, float thickness = 1.0f, float chubbiness = 0) { cf_draw_quad(bb, thickness, chubbiness); }
 CF_INLINE void draw_quad(v2 p0, v2 p1, v2 p2, v2 p3, float thickness = 1.0f, float chubbiness = 0) { cf_draw_quad2(p0, p1, p2, p3, thickness, chubbiness); }
 CF_INLINE void draw_quad_fill(CF_Aabb bb, float chubbiness = 0) { cf_draw_quad_fill(bb, chubbiness); }
@@ -1772,16 +1880,20 @@ CF_INLINE int draw_peek_layer() { return cf_draw_peek_layer(); }
 CF_INLINE void draw_push_color(CF_Color c) { cf_draw_push_color(c); }
 CF_INLINE CF_Color draw_pop_color() { return cf_draw_pop_color(); }
 CF_INLINE CF_Color draw_peek_color() { return cf_draw_peek_color(); }
-CF_INLINE void draw_push_antialias(bool antialias) { cf_draw_push_antialias(antialias); }
-CF_INLINE bool draw_pop_antialias() { return cf_draw_pop_antialias(); }
-CF_INLINE bool draw_peek_antialias() { return cf_draw_peek_antialias(); }
-CF_INLINE void draw_push_antialias_scale(float scale) { return cf_draw_push_antialias_scale(scale); }
-CF_INLINE float draw_pop_antialias_scale() { return cf_draw_pop_antialias_scale(); }
-CF_INLINE float draw_peek_antialias_scale() { return cf_draw_peek_antialias_scale(); }
+CF_INLINE void draw_push_shape_aa(float aa) { cf_draw_push_shape_aa(aa); }
+CF_INLINE float draw_pop_shape_aa() { return cf_draw_pop_shape_aa(); }
+CF_INLINE float draw_peek_shape_aa() { return cf_draw_peek_shape_aa(); }
 CF_INLINE void draw_push_vertex_attributes(float r, float g, float b, float a) { cf_draw_push_vertex_attributes(r, g, b, a); }
 CF_INLINE void draw_push_vertex_attributes(CF_Color attributes) { cf_draw_push_vertex_attributes2(attributes); }
 CF_INLINE CF_Color draw_pop_vertex_attributes() { return cf_draw_pop_vertex_attributes(); }
 CF_INLINE CF_Color draw_peek_vertex_attributes() { return cf_draw_peek_vertex_attributes(); }
+CF_INLINE void draw_push_tri_colors(CF_Color c0, CF_Color c1, CF_Color c2) { cf_draw_push_tri_colors(c0, c1, c2); }
+CF_INLINE void draw_pop_tri_colors() { cf_draw_pop_tri_colors(); }
+CF_INLINE void draw_peek_tri_colors(CF_Color* c0, CF_Color* c1, CF_Color* c2) { cf_draw_peek_tri_colors(c0, c1, c2); }
+CF_INLINE void draw_push_tri_attributes(CF_Color a0, CF_Color a1, CF_Color a2) { cf_draw_push_tri_attributes(a0, a1, a2); }
+CF_INLINE void draw_pop_tri_attributes() { cf_draw_pop_tri_attributes(); }
+CF_INLINE void draw_peek_tri_attributes(CF_Color* a0, CF_Color* a1, CF_Color* a2) { cf_draw_peek_tri_attributes(a0, a1, a2); }
+CF_INLINE void set_vertex_callback(CF_VertexFn* vertex_fn) { cf_set_vertex_callback(vertex_fn); }
 
 CF_INLINE CF_Result make_font(const char* path, const char* font_name) { return cf_make_font(path, font_name); }
 CF_INLINE CF_Result make_font_from_memory(void* data, int size, const char* font_name) { return cf_make_font_from_memory(data, size, font_name); }
@@ -1804,6 +1916,9 @@ CF_INLINE v2 text_size(const char* text, int num_chars_to_render = -1) { return 
 CF_INLINE void draw_text(const char* text, v2 position, int num_chars_to_render = -1) { cf_draw_text(text, position, num_chars_to_render); }
 
 CF_INLINE void text_effect_register(const char* name, CF_TextEffectFn* fn) { cf_text_effect_register(name, fn); }
+CF_INLINE double text_effect_get_number(const CF_TextEffect* fx, const char* key, double default_val = 0) { return cf_text_effect_get_number(fx, key, default_val); }
+CF_INLINE CF_Color text_effect_get_color(const CF_TextEffect* fx, const char* key, CF_Color default_val = cf_color_white()) { return cf_text_effect_get_color(fx, key, default_val); }
+CF_INLINE const char* text_effect_get_string(const CF_TextEffect* fx, const char* key, const char* default_val = NULL) { return cf_text_effect_get_string(fx, key, default_val); }
 
 CF_INLINE void push_text_id(uint64_t id) { cf_push_text_id(id); }
 CF_INLINE uint64_t pop_text_id() { return cf_pop_text_id(); }
@@ -1814,6 +1929,9 @@ CF_INLINE const char* text_without_markups(const char* text) { return cf_text_wi
 CF_INLINE void push_text_effect_active(bool effects_on) { cf_push_text_effect_active(effects_on); }
 CF_INLINE bool pop_text_effect_active() { return cf_pop_text_effect_active(); }
 CF_INLINE bool peek_text_effect_active() { return cf_peek_text_effect_active(); }
+CF_INLINE void push_text_vertical_layout(bool layout_vertically) { cf_push_text_vertical_layout(layout_vertically); }
+CF_INLINE bool pop_text_vertical_layout() { return cf_pop_text_vertical_layout(); }
+CF_INLINE bool peek_text_vertical_layout() { return cf_peek_text_vertical_layout(); }
 
 CF_INLINE void draw_push_viewport(CF_Rect viewport) { cf_draw_push_viewport(viewport); }
 CF_INLINE CF_Rect draw_pop_viewport() { return cf_draw_pop_viewport(); }
@@ -1827,12 +1945,16 @@ CF_INLINE CF_RenderState draw_peek_render_state() { return cf_draw_peek_render_s
 CF_INLINE void draw_set_atlas_dimensions(int width_in_pixels, int height_in_pixels) { cf_draw_set_atlas_dimensions(width_in_pixels, height_in_pixels); }
 CF_INLINE CF_Shader make_draw_shader(const char* path) { return cf_make_draw_shader(path); }
 CF_INLINE CF_Shader make_draw_shader_from_source(const char* src) { return cf_make_draw_shader_from_source(src); }
+CF_INLINE CF_Shader make_draw_shader_from_bytecode(CF_DrawShaderBytecode bytecode) { return cf_make_draw_shader_from_bytecode(bytecode); }
 CF_INLINE void draw_push_shader(CF_Shader shader) { cf_draw_push_shader(shader); }
 CF_INLINE CF_Shader draw_pop_shader() { return cf_draw_pop_shader(); }
 CF_INLINE CF_Shader draw_peek_shader() { return cf_draw_peek_shader(); }
 CF_INLINE void draw_push_alpha_discard(bool true_to_enable_alpha_discard) { return cf_draw_push_alpha_discard(true_to_enable_alpha_discard); }
 CF_INLINE bool draw_pop_alpha_discard() { return cf_draw_pop_alpha_discard(); }
 CF_INLINE bool draw_peek_alpha_discard() { return cf_draw_peek_alpha_discard(); }
+CF_INLINE void draw_push_filter(CF_DrawFilterMode mode) { cf_draw_push_filter(mode); }
+CF_INLINE CF_DrawFilterMode draw_pop_filter() { return cf_draw_pop_filter(); }
+CF_INLINE CF_DrawFilterMode draw_peek_filter() { return cf_draw_peek_filter(); }
 CF_INLINE void draw_set_texture(const char* name, CF_Texture texture) { cf_draw_set_texture(name, texture); }
 CF_INLINE void draw_set_uniform(const char* name, void* data, CF_UniformType type, int array_length) { cf_draw_set_uniform(name, data, type, array_length); }
 CF_INLINE void draw_set_uniform(const char* name, int val) { cf_draw_set_uniform_int(name, val); }

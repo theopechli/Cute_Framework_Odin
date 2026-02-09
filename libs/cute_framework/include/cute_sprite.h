@@ -11,7 +11,7 @@
 
 #include "cute_defines.h"
 #include "cute_array.h"
-#include "cute_hashtable.h"
+#include "cute_map.h"
 #include "cute_string.h"
 #include "cute_math.h"
 #include "cute_time.h"
@@ -102,6 +102,8 @@ typedef struct CF_Animation
 } CF_Animation;
 // @end
 
+typedef CF_MAP(const CF_Animation*) CF_AnimationTable;
+
 /**
  * @struct   CF_SpriteSlice
  * @category sprite
@@ -186,8 +188,8 @@ typedef struct CF_Sprite
 	/* @member A pointer to the current animation to display, from within the set `animations`. See `CF_Animation`. */
 	const CF_Animation* animation;
 
-	/* @member The set of named animations for this sprite. See `CF_Animation` and `htbl`. */
-	htbl const CF_Animation** animations;
+	/* @member The set of named animations for this sprite. See `CF_Animation` and `CK_Map`. */
+	CF_AnimationTable* animations;
 
 	/* @member An optional transform for rendering within a particular space. See `CF_Transform`. */
 	CF_Transform transform;
@@ -503,7 +505,7 @@ CF_INLINE void cf_sprite_update(CF_Sprite* sprite)
 	if (!sprite->animation) return;
 
 	sprite->t += CF_DELTA_TIME * sprite->play_speed_multiplier;
-	int frame_count = alen(sprite->animation->frames);
+	int frame_count = asize(sprite->animation->frames);
 	CF_PlayDirection direction = sprite->play_direction;
 	if (direction == CF_PLAY_DIRECTION_FORWARDS) {
 		if (sprite->t >= sprite->animation->frames[sprite->frame_index].delay) {
@@ -575,7 +577,7 @@ CF_INLINE void cf_sprite_reset(CF_Sprite* sprite)
 /**
  * @function cf_sprite_play
  * @category sprite
- * @brief    Switches to a new aninmation and starts playing it from the beginning.
+ * @brief    Switches to a new animation and starts playing it from the beginning.
  * @param    sprite     The sprite.
  * @param    animation  Name of the animation to switch to and start playing.
  * @related  CF_Sprite cf_sprite_update cf_sprite_play cf_sprite_is_playing
@@ -584,7 +586,7 @@ CF_INLINE void cf_sprite_play(CF_Sprite* sprite, const char* animation)
 {
 	CF_ASSERT(sprite);
 	if (!sprite->animations) return;
-	sprite->animation = hfind(sprite->animations, sintern(animation));
+	sprite->animation = map_get(*sprite->animations, sintern(animation));
 	CF_ASSERT(sprite->animation);
 	cf_sprite_reset(sprite);
 }
@@ -646,7 +648,7 @@ CF_INLINE void cf_sprite_toggle_pause(CF_Sprite* sprite)
 /**
  * @function cf_sprite_flip_x
  * @category sprite
- * @brief    Flip's the sprite on the x-axis.
+ * @brief    Flips the sprite on the x-axis.
  * @param    sprite     The sprite.
  * @remarks  Works by flipping the sign of the sprite's scale on the x-axis.
  * @related  CF_Sprite cf_sprite_flip_x cf_sprite_flip_y
@@ -660,7 +662,7 @@ CF_INLINE void cf_sprite_flip_x(CF_Sprite* sprite)
 /**
  * @function cf_sprite_flip_y
  * @category sprite
- * @brief    Flip's the sprite on the y-axis.
+ * @brief    Flips the sprite on the y-axis.
  * @param    sprite     The sprite.
  * @remarks  Works by flipping the sign of the sprite's scale on the y-axis.
  * @related  CF_Sprite cf_sprite_flip_x cf_sprite_flip_y
@@ -682,7 +684,7 @@ CF_INLINE int cf_sprite_frame_count(const CF_Sprite* sprite)
 {
 	CF_ASSERT(sprite);
 	if (!sprite->animation) return 0;
-	return alen(sprite->animation->frames);
+	return asize(sprite->animation->frames);
 }
 
 /**
@@ -723,7 +725,7 @@ CF_INLINE void cf_sprite_set_frame(CF_Sprite* sprite, int frame)
 {
 	CF_ASSERT(sprite);
 	if (!sprite->animation) return;
-	int frame_count = alen(sprite->animation->frames);
+	int frame_count = asize(sprite->animation->frames);
 	CF_ASSERT(frame >= 0 && frame < frame_count);
 	sprite->frame_index = frame;
 	sprite->t = 0;
@@ -826,7 +828,7 @@ CF_INLINE bool cf_sprite_on_loop(CF_Sprite* sprite)
  * @param    frame       The frame.
  * @remarks  You can use this function to build your own animations in a custom manner. It's recommend to just use `cf_make_sprite`, which
  *           loads a full sprite out of a .ase file. But, this function provides another low-level option if desired.
- * @related  CF_Sprite CF_Animation CF_Frame dyna htbl
+ * @related  CF_Sprite CF_Animation CF_Frame dyna CK_Map
  */
 CF_INLINE void cf_animation_add_frame(CF_Animation* animation, CF_Frame frame) { CF_ASSERT(animation); apush(animation->frames, frame); }
 
@@ -929,6 +931,9 @@ CF_INLINE CF_Sprite make_demo_sprite() { return cf_make_demo_sprite(); }
 CF_INLINE void sprite_unload(const char* aseprite_path) { cf_sprite_unload(aseprite_path); }
 CF_INLINE CF_Sprite sprite_reload(const CF_Sprite* sprite) { return cf_sprite_reload(sprite); }
 CF_INLINE CF_Sprite sprite_reload(CF_Sprite& sprite) { return (sprite = cf_sprite_reload(&sprite)); }
+CF_INLINE void easy_sprite_update_pixels(CF_Sprite* sprite, const CF_Pixel* pixels) { cf_easy_sprite_update_pixels(sprite, pixels); }
+CF_INLINE void easy_sprite_unload(CF_Sprite* sprite) { cf_easy_sprite_unload(sprite); }
+CF_INLINE CF_Sprite make_sprite_from_memory(const char* unique_name, const void* aseprite_data, int size) { return cf_make_sprite_from_memory(unique_name, aseprite_data, size); }
 
 }
 

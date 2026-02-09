@@ -29,9 +29,8 @@ extern "C" {
  * If you want to draw sprites, lines/shapes, or text, see: cute_draw.h
  *
  * Quick list of unsupported features. CF's focus is on the 2D use case, so most of these features are
- * omit since they aren't super useful for 2D.
+ * omitted since they aren't super useful for 2D.
  *
- *     - Blend color constant
  *     - Multiple render targets (aka color/texture attachments)
  *     - Cube map
  *     - 3D textures
@@ -110,6 +109,28 @@ typedef struct CF_Material { uint64_t id; } CF_Material;
 typedef struct CF_Shader { uint64_t id; } CF_Shader;
 // @end
 
+/**
+ * @struct   CF_ComputeShader
+ * @category graphics
+ * @brief    An opaque handle representing a compute shader.
+ * @remarks  A compute shader is a program that runs on the GPU outside the graphics pipeline.
+ *           Compute shaders are only available on SDL_GPU backends (not GLES3).
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader cf_dispatch_compute
+ */
+typedef struct CF_ComputeShader { uint64_t id; } CF_ComputeShader;
+// @end
+
+/**
+ * @struct   CF_StorageBuffer
+ * @category graphics
+ * @brief    An opaque handle representing a GPU storage buffer.
+ * @remarks  Storage buffers are GPU-accessible buffers used with compute and graphics shaders.
+ *           They are only available on SDL_GPU backends (not GLES3).
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_make_storage_buffer cf_destroy_storage_buffer cf_update_storage_buffer
+ */
+typedef struct CF_StorageBuffer { uint64_t id; } CF_StorageBuffer;
+// @end
+
 //--------------------------------------------------------------------------------------------------
 // Device queries.
 
@@ -120,7 +141,7 @@ typedef struct CF_Shader { uint64_t id; } CF_Shader;
  * @related  CF_BackendType cf_backend_type_to_string cf_query_backend
  */
 #define CF_BACKEND_TYPE_DEFS \
-	/* @entry Invalid backend type (unitialized or failed to create). */           \
+	/* @entry Invalid backend type (uninitialized or failed to create). */           \
 	CF_ENUM(BACKEND_TYPE_INVALID, -1)                                              \
 	/* @entry Vulkan backend. */                                                   \
 	CF_ENUM(BACKEND_TYPE_VULKAN, 0)                                                \
@@ -132,7 +153,7 @@ typedef struct CF_Shader { uint64_t id; } CF_Shader;
 	CF_ENUM(BACKEND_TYPE_METAL,  3)                                                \
 	/* @entry A "secret" backend for platforms under non-disclosure agreement. */  \
 	CF_ENUM(BACKEND_TYPE_PRIVATE,  4)                                              \
-	/* @entry OpenGL ES 3 backen.. */                                              \
+	/* @entry OpenGL ES 3 backend. */                                              \
 	CF_ENUM(BACKEND_TYPE_GLES3,  5)                                                \
 	/* @end */
 
@@ -390,9 +411,9 @@ CF_API bool CF_CALL cf_query_pixel_format(CF_PixelFormat format, CF_PixelFormatO
 	/* @entry The texture will be used as read-only storage in graphics pipelines. */ \
 	CF_ENUM(TEXTURE_USAGE_GRAPHICS_STORAGE_READ_BIT, 0x00000008)                      \
 	/* @entry The texture will be used as read-only storage in compute pipelines. */  \
-	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_READ_BIT,  0x00000020)                      \
+	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_READ_BIT,  0x00000010)                      \
 	/* @entry The texture will be used as writeable storage in compute pipelines. */  \
-	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_WRITE_BIT, 0x00000040)                      \
+	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_WRITE_BIT, 0x00000020)                      \
 	/* @end */
 
 typedef uint32_t CF_TextureUsageFlags;
@@ -544,11 +565,11 @@ typedef struct CF_TextureParams
 	/* @member Number of elements (usually pixels) along the height of the texture. */
 	int height;
 
-	/* @member 0 = auto compute from dimensions if `generate_mipmaps` is true, else specify an explicit number. */
+	/* @member 0 = auto compute from dimensions if `allocate_mipmaps` is true, else specify an explicit number. */
 	int mip_count;
 
-	/* @member Defaulted to false, true to enable mipmap generation and will be initialized with full mipmaps. */
-	bool generate_mipmaps;
+	/* @member Defaulted to false, true to allocate a full mipmap chain for the texture. */
+	bool allocate_mipmaps;
 
 	/* @member Mipmap level bias; positive = blurrier, negative = sharper. */
 	float mip_lod_bias;
@@ -658,6 +679,8 @@ CF_API uint64_t CF_CALL cf_texture_binding_handle(CF_Texture texture);
 	CF_ENUM(SHADER_STAGE_VERTEX,   0) \
 	/* @entry */                      \
 	CF_ENUM(SHADER_STAGE_FRAGMENT, 1) \
+	/* @entry */                      \
+	CF_ENUM(SHADER_STAGE_COMPUTE,  2) \
 	/* @end */
 
 typedef enum CF_ShaderStage
@@ -762,7 +785,7 @@ CF_API CF_Shader CF_CALL cf_make_shader_from_source(const char* vertex_src, cons
  * @category graphics
  * @brief    Compiles a shader to SPIR-V bytecode.
  * @param    shader_src   Raw glsl, version 450, for the shader as a string.
- * @param    stage        The shaderstrage to differentiate between vertex or fragment shaders.
+ * @param    stage        The shader stage to differentiate between vertex or fragment shaders.
  * @remarks  This function is good for precompiling shaders to bytecode, which can help speed up app
  *           startup times. SPIR-V blobs can be saved straight to disk and shipped with your game. Load
  *           the bytecode blob pair (vertex + fragment shader blobs) into a `CF_Shader` via `cf_make_shader_from_bytecode`.
@@ -802,6 +825,223 @@ CF_API CF_Shader CF_CALL cf_make_shader_from_bytecode(CF_ShaderBytecode vertex_b
  * @related  CF_Shader cf_make_shader cf_destroy_shader cf_apply_shader CF_Material
  */
 CF_API void CF_CALL cf_destroy_shader(CF_Shader shader);
+
+//--------------------------------------------------------------------------------------------------
+// Compute Shaders.
+//
+// Compute shaders run on the GPU outside the graphics pipeline. They are only available on
+// SDL_GPU backends (Vulkan, D3D12, Metal). GLES3 stubs return null handles / no-op.
+//
+// Uniforms and sampled textures are supplied via a CF_Material's compute stage (cs).
+// Storage buffers and storage textures are bound directly via the dispatch struct.
+
+/**
+ * @function cf_make_compute_shader
+ * @category graphics
+ * @brief    Creates a compute shader from a file in the shader directory.
+ * @param    path   A virtual path to the compute shader source, relative to the shader directory.
+ * @remarks  Compute shaders must use GLSL 450 and follow the SDL_GPU resource set layout convention.
+ *           Resources must be assigned to specific descriptor sets depending on their type:
+ *
+ *           For _COMPUTE_ shaders:
+ *           ```
+ *               Set 0: Sampled textures, followed by readonly storage textures, followed by readonly storage buffers
+ *               Set 1: Read-write storage textures, followed by read-write storage buffers
+ *               Set 2: Uniform buffers
+ *           ```
+ *
+ *           Example _COMPUTE_ shader:
+ *           ```glsl
+ *           layout (set = 0, binding = 0) uniform sampler2D u_input;
+ *
+ *           layout (set = 1, binding = 0, rgba8) uniform writeonly image2D u_output;
+ *
+ *           layout (set = 2, binding = 0) uniform uniform_block {
+ *               float u_time;
+ *           };
+ *
+ *           layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+ *           ```
+ *
+ *           Important notes:
+ *           - Sampled textures (set 0) are bound via `cf_material_set_texture_cs`.
+ *           - Uniforms (set 2) are bound via `cf_material_set_uniform_cs`.
+ *           - Read-write storage textures (set 1) are bound via `CF_ComputeDispatch::rw_textures`.
+ *           - Readonly storage textures (set 0, after samplers) are bound via `CF_ComputeDispatch::ro_textures`.
+ *           - Do NOT use `return` to exit threads before a `barrier()` call. All threads in a workgroup
+ *             must reach `barrier()` uniformly, or the pipeline will fail to compile on some backends.
+ *             Instead, guard `imageStore` and other side-effects behind a bounds check.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader(const char* path);
+
+/**
+ * @function cf_make_compute_shader_from_source
+ * @category graphics
+ * @brief    Creates a compute shader from a GLSL 450 source string.
+ * @param    src    The compute shader source as a C-string.
+ * @remarks  The source must follow the compute shader resource set layout described in `cf_make_compute_shader`.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader_from_source(const char* src);
+
+/**
+ * @function cf_make_compute_shader_from_bytecode
+ * @category graphics
+ * @brief    Creates a compute shader from SPIR-V bytecode.
+ * @param    bytecode   A bytecode blob from `cf_compile_shader_to_bytecode` with `CF_SHADER_STAGE_COMPUTE`.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader_from_bytecode(CF_ShaderBytecode bytecode);
+
+/**
+ * @function cf_destroy_compute_shader
+ * @category graphics
+ * @brief    Frees up a compute shader.
+ * @param    shader   The compute shader to destroy.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader
+ */
+CF_API void CF_CALL cf_destroy_compute_shader(CF_ComputeShader shader);
+
+//--------------------------------------------------------------------------------------------------
+// Storage Buffers.
+
+/**
+ * @struct   CF_StorageBufferParams
+ * @category graphics
+ * @brief    Parameters for creating a storage buffer.
+ * @related  CF_StorageBuffer cf_storage_buffer_defaults cf_make_storage_buffer
+ */
+typedef struct CF_StorageBufferParams
+{
+	/* @member Size in bytes. */
+	int size;
+
+	/* @member GPU can read in compute stage (default true). */
+	bool compute_readable;
+
+	/* @member GPU can write in compute stage (default false). */
+	bool compute_writable;
+
+	/* @member GPU can read in graphics vertex/fragment stage (default false). */
+	bool graphics_readable;
+} CF_StorageBufferParams;
+// @end
+
+/**
+ * @function cf_storage_buffer_defaults
+ * @category graphics
+ * @brief    Returns sensible defaults for `CF_StorageBufferParams`.
+ * @param    size   The size in bytes of the storage buffer.
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_make_storage_buffer
+ */
+CF_INLINE CF_StorageBufferParams cf_storage_buffer_defaults(int size) {
+	CF_StorageBufferParams params;
+	params.size = size;
+	params.compute_readable = true;
+	params.compute_writable = false;
+	params.graphics_readable = false;
+	return params;
+}
+
+/**
+ * @function cf_make_storage_buffer
+ * @category graphics
+ * @brief    Creates a GPU storage buffer.
+ * @param    params   Parameters for the storage buffer, see `CF_StorageBufferParams`.
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_storage_buffer_defaults cf_destroy_storage_buffer cf_update_storage_buffer
+ */
+CF_API CF_StorageBuffer CF_CALL cf_make_storage_buffer(CF_StorageBufferParams params);
+
+/**
+ * @function cf_update_storage_buffer
+ * @category graphics
+ * @brief    Uploads CPU data into a storage buffer.
+ * @param    buffer   The storage buffer to update.
+ * @param    data     Pointer to the data to upload.
+ * @param    size     Size in bytes of the data to upload.
+ * @related  CF_StorageBuffer cf_make_storage_buffer cf_destroy_storage_buffer
+ */
+CF_API void CF_CALL cf_update_storage_buffer(CF_StorageBuffer buffer, const void* data, int size);
+
+/**
+ * @function cf_destroy_storage_buffer
+ * @category graphics
+ * @brief    Frees up a storage buffer.
+ * @param    buffer   The storage buffer to destroy.
+ * @related  CF_StorageBuffer cf_make_storage_buffer
+ */
+CF_API void CF_CALL cf_destroy_storage_buffer(CF_StorageBuffer buffer);
+
+//--------------------------------------------------------------------------------------------------
+// Compute Dispatch.
+
+/**
+ * @struct   CF_ComputeDispatch
+ * @category graphics
+ * @brief    Parameters for dispatching a compute shader.
+ * @remarks  Read-write resources are bound at compute pass creation time (SDL_GPU requirement).
+ *           Read-only storage resources are bound after the pipeline bind.
+ *           Sampled textures and uniforms come from the material (name-matched).
+ * @related  CF_ComputeShader CF_ComputeDispatch cf_compute_dispatch_defaults cf_dispatch_compute
+ */
+typedef struct CF_ComputeDispatch
+{
+	/* @member Read-write storage buffers (bound at pass creation). */
+	CF_StorageBuffer* rw_buffers;
+	/* @member Number of read-write storage buffers. */
+	int rw_buffer_count;
+	/* @member Read-write storage textures (bound at pass creation). */
+	CF_Texture* rw_textures;
+	/* @member Number of read-write storage textures. */
+	int rw_texture_count;
+
+	/* @member Read-only storage buffers (bound after pipeline bind). */
+	CF_StorageBuffer* ro_buffers;
+	/* @member Number of read-only storage buffers. */
+	int ro_buffer_count;
+	/* @member Read-only storage textures (bound after pipeline bind). */
+	CF_Texture* ro_textures;
+	/* @member Number of read-only storage textures. */
+	int ro_texture_count;
+
+	/* @member Workgroup count X. */
+	int group_count_x;
+	/* @member Workgroup count Y. */
+	int group_count_y;
+	/* @member Workgroup count Z. */
+	int group_count_z;
+} CF_ComputeDispatch;
+// @end
+
+/**
+ * @function cf_compute_dispatch_defaults
+ * @category graphics
+ * @brief    Returns sensible defaults for `CF_ComputeDispatch`.
+ * @param    gx   Workgroup count X.
+ * @param    gy   Workgroup count Y.
+ * @param    gz   Workgroup count Z.
+ * @related  CF_ComputeDispatch cf_dispatch_compute
+ */
+CF_INLINE CF_ComputeDispatch cf_compute_dispatch_defaults(int gx, int gy, int gz) {
+	CF_ComputeDispatch d;
+	CF_MEMSET(&d, 0, sizeof(d));
+	d.group_count_x = gx;
+	d.group_count_y = gy;
+	d.group_count_z = gz;
+	return d;
+}
+
+/**
+ * @function cf_dispatch_compute
+ * @category graphics
+ * @brief    Dispatches a compute shader.
+ * @param    shader     The compute shader to dispatch.
+ * @param    material   Holds uniforms and sampled textures for the compute stage (set via `cf_material_set_uniform_cs` / `cf_material_set_texture_cs`).
+ * @param    dispatch   Storage resources and workgroup counts.
+ * @related  CF_ComputeShader CF_ComputeDispatch CF_Material cf_material_set_uniform_cs cf_material_set_texture_cs
+ */
+CF_API void CF_CALL cf_dispatch_compute(CF_ComputeShader shader, CF_Material material, CF_ComputeDispatch dispatch);
 
 //--------------------------------------------------------------------------------------------------
 // Render Canvases.
@@ -1123,7 +1363,7 @@ CF_API void CF_CALL cf_mesh_update_index_data(CF_Mesh mesh, void* data, int coun
  * @brief    Overwrites the instance data of a mesh.
  * @param    mesh       The mesh.
  * @param    data       A pointer to instance data.
- * @param    count      Number of isntances in `data`.
+ * @param    count      Number of instances in `data`.
  * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_set_instance_buffer
  */
 CF_API void CF_CALL cf_mesh_update_instance_data(CF_Mesh mesh, void* data, int count);
@@ -1474,7 +1714,7 @@ typedef struct CF_StencilParams
  *           P = S + D
  *
  *           Recap: P is the pixel to write, S is the source factor, while D is the destination factor. Usually the D (destination factor) is
- *           the old pixel value, while S (source factor) is a new image getting draw over old pixel contents. Therefor, P is the final color
+ *           the old pixel value, while S (source factor) is a new image getting draw over old pixel contents. Therefore, P is the final color
  *           after compositing a new image on top of an old image.
  *
  *           Blend factors (see `CF_BlendFactor`) are components of a color, including the alpha component. The most common setup for your
@@ -1763,11 +2003,36 @@ CF_API void CF_CALL cf_material_set_uniform_vs(CF_Material material, const char*
 CF_API void CF_CALL cf_material_set_uniform_fs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length);
 
 /**
+ * @function cf_material_set_texture_cs
+ * @category graphics
+ * @brief    Sets up a sampled texture for the compute shader stage.
+ * @param    material      The material.
+ * @param    name          The name of the texture as it appears in the compute shader.
+ * @param    texture       Data (usually an image) for a shader to access.
+ * @related  CF_Material cf_material_set_uniform_cs cf_dispatch_compute
+ */
+CF_API void CF_CALL cf_material_set_texture_cs(CF_Material material, const char* name, CF_Texture texture);
+
+/**
+ * @function cf_material_set_uniform_cs
+ * @category graphics
+ * @brief    Sets up a uniform value for the compute shader stage.
+ * @param    material      The material.
+ * @param    name          The name of the uniform as it appears in the compute shader.
+ * @param    data          The value of the uniform.
+ * @param    type          The type of the uniform. See `CF_UniformType`.
+ * @param    array_length  The number of elements in the uniform array.
+ * @remarks  Same name-matching behavior as `cf_material_set_uniform_vs`/`cf_material_set_uniform_fs`.
+ * @related  CF_Material cf_material_set_texture_cs cf_dispatch_compute
+ */
+CF_API void CF_CALL cf_material_set_uniform_cs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length);
+
+/**
  * @function cf_material_clear_uniforms
  * @category graphics
- * @brief    Clears any uniforms previously set by `cf_material_set_uniform_vs` or `cf_material_set_uniform_fs`.
+ * @brief    Clears any uniforms previously set by `cf_material_set_uniform_vs`, `cf_material_set_uniform_fs`, or `cf_material_set_uniform_cs`.
  * @param    material      The material.
- * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs cf_material_set_uniform_cs
  */
 CF_API void CF_CALL cf_material_clear_uniforms(CF_Material material);
 
@@ -1924,6 +2189,8 @@ CF_INLINE void material_set_texture_fs(CF_Material material, const char* name, C
 CF_INLINE void material_clear_textures(CF_Material material) { cf_material_clear_textures(material); }
 CF_INLINE void material_set_uniform_vs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_vs(material, name, data, type, array_length); }
 CF_INLINE void material_set_uniform_fs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_fs(material, name, data, type, array_length); }
+CF_INLINE void material_set_texture_cs(CF_Material material, const char* name, CF_Texture texture) { cf_material_set_texture_cs(material, name, texture); }
+CF_INLINE void material_set_uniform_cs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_cs(material, name, data, type, array_length); }
 CF_INLINE void material_clear_uniforms(CF_Material material) { cf_material_clear_uniforms(material); }
 CF_INLINE void apply_canvas(CF_Canvas canvas, bool clear = false) { cf_apply_canvas(canvas, clear); }
 CF_INLINE void apply_viewport(int x, int y, int w, int h) { cf_apply_viewport(x, y, w, h); }
@@ -1931,9 +2198,28 @@ CF_INLINE void apply_scissor(int x, int y, int w, int h) { cf_apply_scissor(x, y
 CF_INLINE void apply_mesh(CF_Mesh mesh) { cf_apply_mesh(mesh); }
 CF_INLINE void apply_shader(CF_Shader shader, CF_Material material) { cf_apply_shader(shader, material); }
 CF_INLINE void draw_elements() { cf_draw_elements(); }
+CF_INLINE bool query_pixel_format(CF_PixelFormat format, CF_PixelFormatOp op) { return cf_query_pixel_format(format, op); }
+CF_INLINE void texture_update_mip(CF_Texture texture, void* data, int size, int mip_level) { cf_texture_update_mip(texture, data, size, mip_level); }
+CF_INLINE void generate_mipmaps(CF_Texture texture) { cf_generate_mipmaps(texture); }
+CF_INLINE uint64_t texture_handle(CF_Texture texture) { return cf_texture_handle(texture); }
+CF_INLINE uint64_t texture_binding_handle(CF_Texture texture) { return cf_texture_binding_handle(texture); }
+CF_INLINE void mesh_set_index_buffer(CF_Mesh mesh, int index_buffer_size_in_bytes, int index_bit_count) { cf_mesh_set_index_buffer(mesh, index_buffer_size_in_bytes, index_bit_count); }
+CF_INLINE void mesh_set_instance_buffer(CF_Mesh mesh, int instance_buffer_size_in_bytes, int instance_stride) { cf_mesh_set_instance_buffer(mesh, instance_buffer_size_in_bytes, instance_stride); }
+CF_INLINE void clear_depth_stencil(float depth, uint32_t stencil) { cf_clear_depth_stencil(depth, stencil); }
+CF_INLINE void apply_stencil_reference(int reference) { cf_apply_stencil_reference(reference); }
+CF_INLINE void apply_blend_constants(float r, float g, float b, float a) { cf_apply_blend_constants(r, g, b, a); }
+CF_INLINE CF_ComputeShader make_compute_shader(const char* path) { return cf_make_compute_shader(path); }
+CF_INLINE CF_ComputeShader make_compute_shader_from_source(const char* src) { return cf_make_compute_shader_from_source(src); }
+CF_INLINE CF_ComputeShader make_compute_shader_from_bytecode(CF_ShaderBytecode bytecode) { return cf_make_compute_shader_from_bytecode(bytecode); }
+CF_INLINE void destroy_compute_shader(CF_ComputeShader shader) { cf_destroy_compute_shader(shader); }
+CF_INLINE CF_StorageBufferParams storage_buffer_defaults(int size) { return cf_storage_buffer_defaults(size); }
+CF_INLINE CF_StorageBuffer make_storage_buffer(CF_StorageBufferParams params) { return cf_make_storage_buffer(params); }
+CF_INLINE void update_storage_buffer(CF_StorageBuffer buffer, const void* data, int size) { cf_update_storage_buffer(buffer, data, size); }
+CF_INLINE void destroy_storage_buffer(CF_StorageBuffer buffer) { cf_destroy_storage_buffer(buffer); }
+CF_INLINE CF_ComputeDispatch compute_dispatch_defaults(int gx, int gy, int gz) { return cf_compute_dispatch_defaults(gx, gy, gz); }
+CF_INLINE void dispatch_compute(CF_ComputeShader shader, CF_Material material, CF_ComputeDispatch dispatch) { cf_dispatch_compute(shader, material, dispatch); }
 
 }
-void cf_clear_canvas(CF_Canvas canvas_handle);
 
 CF_INLINE bool operator==(const CF_RenderState& a, const CF_RenderState& b) { return !CF_MEMCMP(&a, &b, sizeof(a)); }
 CF_INLINE bool operator==(CF_Shader a, CF_Shader b) { return a.id == b.id; }

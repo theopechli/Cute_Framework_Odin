@@ -8,6 +8,7 @@ foreign lib {
 	DELTA_TIME_FIXED:       c.float
 	DELTA_TIME_INTERPOLANT: c.float
 	SECONDS:                c.double
+	PAUSE_TIME_LEFT:        c.float
 }
 
 OnUpdateFn :: #type proc "c" (udata: rawptr)
@@ -22,6 +23,8 @@ foreign lib {
 	on_interval                    :: proc(interval: c.float, offset: c.float = 0.0) -> bool ---
 	between_interval               :: proc(interval: c.float, offset: c.float = 0.0) -> bool ---
 	is_paused                      :: proc() -> bool ---
+	pause                          :: proc() ---
+	unpause                        :: proc() ---
 	sleep                          :: proc(milliseconds: c.int) ---
 }
 

@@ -1,6 +1,7 @@
 package cute_framework
 
-@(link_prefix = "cf_", default_calling_convention = "c")
-foreign lib {
-	sintern :: proc(s: cstring) -> cstring ---
+import ck "../ckit"
+
+sintern :: #force_inline proc "c" (s: cstring) -> cstring {
+	return ck.sintern(s)
 }

@@ -22,7 +22,7 @@ SoundParams :: struct {
 	volume:       c.float,
 	pan:          c.float,
 	pitch:        c.float,
-	sample_index: c.int,
+	start_time:   c.float,
 }
 
 sound_params_defaults :: #force_inline proc "c" () -> SoundParams {

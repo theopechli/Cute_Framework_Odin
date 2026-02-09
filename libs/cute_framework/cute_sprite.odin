@@ -22,6 +22,8 @@ Animation :: struct {
 	frame_offset:   c.int,
 }
 
+AnimationTable :: [^]^Animation
+
 SpriteSlice :: struct {
 	frame_index: c.int,
 	name:        cstring,
@@ -47,7 +49,7 @@ Sprite :: struct {
 	easy_sprite_id:        c.uint64_t,
 	play_direction:        PlayDirection,
 	animation:             ^Animation,
-	animations:            ^[^]Animation,
+	animations:            ^AnimationTable,
 	transform:             Transform,
 }
 
@@ -68,32 +70,27 @@ foreign lib {
 }
 
 sprite_get_scale_x :: #force_inline proc "c" (sprite: ^Sprite) -> c.float {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	return sprite.scale.x
 }
 
 sprite_get_scale_y :: #force_inline proc "c" (sprite: ^Sprite) -> c.float {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	return sprite.scale.y
 }
 
 sprite_set_scale   :: #force_inline proc "c" (sprite: ^Sprite, scale: V2) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.scale = scale
 }
 
 sprite_set_loop    :: #force_inline proc "c" (sprite: ^Sprite, loop: bool) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.loop = loop
 }
 
 sprite_update :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	if sprite.paused {
 		return
 	}
@@ -102,7 +99,7 @@ sprite_update :: #force_inline proc "c" (sprite: ^Sprite) {
 	}
 
 	sprite.t += DELTA_TIME * sprite.play_speed_multiplier
-	frame_count: c.int = alen(sprite.animation.frames)
+	frame_count: c.int = asize(sprite.animation.frames)
 	direction := sprite.play_direction
 	if direction == .FORWARDS {
 		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
@@ -155,8 +152,7 @@ sprite_update :: #force_inline proc "c" (sprite: ^Sprite) {
 }
 
 sprite_reset :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.paused = false
 	sprite.frame_index = 0
 	sprite.loop_count = 0
@@ -167,58 +163,50 @@ sprite_reset :: #force_inline proc "c" (sprite: ^Sprite) {
 }
 
 sprite_play :: #force_inline proc "c" (sprite: ^Sprite, animation: cstring) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	if sprite.animations == nil {
 		return
 	}
-	sprite.animation = hfind(sprite.animations, sintern(animation))
-	assert(sprite.animation != nil)
+	sprite.animation = map_get(sprite.animations^, sintern(animation))^
+	assert_contextless(sprite.animation != nil)
 	sprite_reset(sprite)
 }
 
 sprite_pause :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.paused = true
 }
 
 sprite_unpause :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.paused = false
 }
 
 sprite_toggle_pause :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.paused = !sprite.paused
 }
 
 sprite_flip_x :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.scale.x *= -1.0
 }
 
 sprite_flip_y :: #force_inline proc "c" (sprite: ^Sprite) {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	sprite.scale.y *= -1.0
 }
 
 sprite_frame_count :: #force_inline proc "c" (sprite: ^Sprite) -> c.int {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	if sprite.animation == nil {
 		return 0
 	}
-	return alen(sprite.animation.frames)
+	return asize(sprite.animation.frames)
 }
 
 sprite_will_finish :: #force_inline proc "c" (sprite: ^Sprite) -> bool {
-	context = runtime.default_context()
-	assert(sprite != nil)
+	assert_contextless(sprite != nil)
 	// TODO -- Backwards and pingpong.
 	if sprite.animation == nil {
 		return false

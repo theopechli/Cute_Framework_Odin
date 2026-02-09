@@ -6,8 +6,7 @@ import "core:strings"
 import "core:time"
 
 import cf "libs:cute_framework"
-@(require)
-import imgui "libs:imgui"
+@(require) import imgui "libs:imgui"
 
 main :: proc() {
 	result := cf.make_app(

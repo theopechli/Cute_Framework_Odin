@@ -13,13 +13,13 @@
 //--------------------------------------------------------------------------------------------------
 // C API
 
-#define CF_VERSION_STRING_COMPILED "Cute Framework Version 1.1.0"
+#define CF_VERSION_STRING_COMPILED "Cute Framework Version 1.1.1"
 
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-CF_API const char* CF_CALL cf_version_string_linked();
+CF_API const char* CF_CALL cf_version_string_linked(void);
 
 #ifdef __cplusplus
 }

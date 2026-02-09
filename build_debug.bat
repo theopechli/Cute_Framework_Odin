@@ -2,18 +2,16 @@
 setlocal
 
 set "PROJECT_PATH=%cd%"
-set "BUILD_PATH=%PROJECT_PATH%\build\windows"
+set "BUILD_PATH=%PROJECT_PATH%\build"
 set "LIBS_PATH=%PROJECT_PATH%\libs"
 set "LIBS_CUTE_FRAMEWORK_PATH=%LIBS_PATH%\cute_framework"
 set "EXE=Cute_Framework_Odin_Debug.exe"
 
-if not exist "%BUILD_PATH%" mkdir "%BUILD_PATH%"
+if not exist "%BUILD_PATH%\lib" mkdir "%BUILD_PATH%\lib"
 
-xcopy "%LIBS_CUTE_FRAMEWORK_PATH%\windows\*.dll" "%BUILD_PATH%\" /Y
+xcopy "%LIBS_CUTE_FRAMEWORK_PATH%\lib\*.dll" "%BUILD_PATH%\lib\" /Y
 
 odin build .\src ^
-     -vet ^
-     -strict-style ^
      -debug ^
      -o:none ^
      -collection:libs=.\libs ^

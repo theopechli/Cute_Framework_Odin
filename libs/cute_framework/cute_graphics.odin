@@ -113,7 +113,7 @@ TextureParams :: struct {
 	width:            c.int,
 	height:           c.int,
 	mip_count:        c.int,
-	generate_mipmaps: bool,
+	allocate_mipmaps: bool,
 	mip_lod_bias:     c.float,
 	max_anisotropy:   c.float,
 	stream:           bool,

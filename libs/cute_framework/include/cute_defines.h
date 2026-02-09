@@ -93,6 +93,8 @@
 #	define CF_API
 #endif
 
+#define CK_API CF_API
+
 #ifdef CF_WINDOWS
 #	define CF_CALL __cdecl
 #else
@@ -213,5 +215,19 @@ CF_API void CF_CALL cf_set_assert_handler(cf_assert_fn* assert_fn);
 #ifdef __cplusplus
 }
 #endif // __cplusplus
+
+//--------------------------------------------------------------------------------------------------
+// C++ API
+
+#ifdef CF_CPP
+
+namespace Cute
+{
+
+CF_INLINE void set_assert_handler(cf_assert_fn* assert_fn) { cf_set_assert_handler(assert_fn); }
+
+}
+
+#endif // CF_CPP
 
 #endif // CF_DEFINES_H
