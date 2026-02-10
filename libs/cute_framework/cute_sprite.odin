@@ -1,7 +1,5 @@
 package cute_framework
 
-import "base:runtime"
-
 import "core:c"
 
 Frame :: struct {
