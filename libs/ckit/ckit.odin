@@ -1,12 +1,15 @@
 package ckit
 
+// FIXME: Test on Windows.
 when ODIN_OS == .Windows {
 	foreign import lib {
 		"./lib/ckit.lib",
+		// "./lib/ckit.dll",
 	}
 } else {
 	foreign import lib {
 		"./lib/ckit.a",
+		// "./lib/libckit.so",
 	}
 }
 
@@ -49,7 +52,7 @@ MAP_COOKIE :: u32('M') | (u32('A') << 8) | (u32('P') << 16) | (u32('!') << 24) /
 @(private)
 MHDR :: #force_inline proc "c" (m: [^]$T) -> ^MapHeader {
 	if m != nil {
-		return (^MapHeader)(uintptr(m) - size_of(MapHeader))
+		return (^MapHeader)(uintptr(rawptr(m)) - size_of(MapHeader))
 	}
 	return nil
 }
@@ -70,11 +73,11 @@ MapHeader :: struct {
 	slot_capacity: c.int,
 }
 
-map_get :: #force_inline proc "c" (m: [^]$T, k: $I) -> ^T {
+map_get :: #force_inline proc "c" (m: [^]^$T, k: $I) -> ^T {
 	map_validate(m)
 	idx := map_find_impl(MHDR(m), transmute(c.uint64_t)k)
 	if idx >= 0 {
-		return &m[idx]
+		return m[idx]
 	}
 	return {}
 }

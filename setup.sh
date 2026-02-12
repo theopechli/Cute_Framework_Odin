@@ -38,3 +38,12 @@ find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.a$
 find "${CUTE_FRAMEWORK_PATH}/${CUTE_FRAMEWORK_BUILD_DIR}" -type f -regex '.*\.so$' -exec realpath {} \; | xargs -I{} cp {} "${LIBS_CUTE_FRAMEWORK_PATH}/lib"
 
 cd "${PROJECT_PATH}"
+
+
+# ckit
+LIBS_CKIT_PATH="${LIBS_PATH}/ckit"
+
+cd "${LIBS_CKIT_PATH}/src"
+./build_unix.sh
+
+cd "${PROJECT_PATH}"

@@ -9,7 +9,7 @@ set "EXE=Cute_Framework_Odin_Debug.exe"
 
 if not exist "%BUILD_PATH%\lib" mkdir "%BUILD_PATH%\lib"
 
-xcopy "%LIBS_CUTE_FRAMEWORK_PATH%\lib\*.dll" "%BUILD_PATH%\lib\" /Y
+xcopy "%LIBS_CUTE_FRAMEWORK_PATH%\lib\*" "%BUILD_PATH%\lib\" /Y
 
 odin build .\src ^
      -debug ^

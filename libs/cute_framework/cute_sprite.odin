@@ -52,8 +52,8 @@ Sprite :: struct {
 }
 
 sprite_defaults :: #force_inline proc "c" () -> Sprite {
-	return Sprite {
-		scale                 = V2 { 1.0, 1.0 },
+	return Sprite{
+		scale                 = V2{ 1.0, 1.0 },
 		opacity               = 1.0,
 		play_speed_multiplier = 1.0,
 		transform             = make_transform(),
@@ -97,7 +97,7 @@ sprite_update :: #force_inline proc "c" (sprite: ^Sprite) {
 	}
 
 	sprite.t += DELTA_TIME * sprite.play_speed_multiplier
-	frame_count: c.int = asize(sprite.animation.frames)
+	frame_count: c.int = array_size(sprite.animation.frames)
 	direction := sprite.play_direction
 	if direction == .FORWARDS {
 		if sprite.t >= sprite.animation.frames[sprite.frame_index].delay {
@@ -165,7 +165,7 @@ sprite_play :: #force_inline proc "c" (sprite: ^Sprite, animation: cstring) {
 	if sprite.animations == nil {
 		return
 	}
-	sprite.animation = map_get(sprite.animations^, sintern(animation))^
+	sprite.animation = map_get(sprite.animations^, sintern(animation))
 	assert_contextless(sprite.animation != nil)
 	sprite_reset(sprite)
 }
@@ -200,7 +200,7 @@ sprite_frame_count :: #force_inline proc "c" (sprite: ^Sprite) -> c.int {
 	if sprite.animation == nil {
 		return 0
 	}
-	return asize(sprite.animation.frames)
+	return array_size(sprite.animation.frames)
 }
 
 sprite_will_finish :: #force_inline proc "c" (sprite: ^Sprite) -> bool {

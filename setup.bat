@@ -32,3 +32,12 @@ for /r "%CUTE_FRAMEWORK_PATH%\%CUTE_FRAMEWORK_BUILD_DIR%" %%F in (*.lib) do copy
 for /r "%CUTE_FRAMEWORK_PATH%\%CUTE_FRAMEWORK_BUILD_DIR%" %%F in (*.dll) do copy "%%F" "%LIBS_CUTE_FRAMEWORK_PATH%\lib\"
 
 cd /d "%PROJECT_PATH%"
+
+
+REM ckit
+set "LIBS_CKIT_PATH=%LIBS_PATH%\ckit"
+
+cd /d "%LIBS_CKIT_PATH%"
+.\build.bat
+
+cd /d "%PROJECT_PATH%"
