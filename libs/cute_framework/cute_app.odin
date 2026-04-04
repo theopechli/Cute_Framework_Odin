@@ -65,5 +65,6 @@ foreign lib {
 	app_get_vsync                      :: proc() -> bool ---
 	app_set_windowed_mode              :: proc() ---
 	app_set_borderless_fullscreen_mode :: proc() ---
+	app_set_fullscreen_mode            :: proc() ---
 	app_get_framerate                  :: proc() -> c.float ---
 }

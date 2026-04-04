@@ -4,9 +4,10 @@ import "core:c"
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	draw_sprite    :: proc(sprite: ^Sprite) ---
-	draw_quad      :: proc(bb: Aabb, thickness: c.float, chubbiness: c.float) ---
-	draw_quad_fill :: proc(bb: Aabb, chubbiness: c.float) ---
+	draw_sprite     :: proc(sprite: ^Sprite) ---
+	draw_quad       :: proc(bb: Aabb, thickness: c.float, chubbiness: c.float) ---
+	draw_quad_fill  :: proc(bb: Aabb, chubbiness: c.float) ---
+	draw_quad_fill2 :: proc(p0: V2, p1: V2, p2: V2, p3: V2, chubbiness: c.float) ---
 }
 
 draw_box :: #force_inline proc "c" (bb: Aabb, thickness: c.float, chubbiness: c.float) { draw_quad(bb, thickness, chubbiness) }
@@ -18,6 +19,7 @@ foreign lib {
 	draw_circle                  :: proc(circle: Circle, thickness: c.float) ---
 	draw_circle2                 :: proc(p: V2, r: c.float, thickness: c.float) ---
 	draw_circle_fill             :: proc(circle: Circle) ---
+	draw_circle_fill2            :: proc(p: V2, r: c.float) ---
 	draw_capsule                 :: proc(capsule: Capsule, thickness: c.float) ---
 	draw_line                    :: proc(p0: V2, p1: V2, thickness: c.float) ---
 	draw_polyline                :: proc(points: [^]V2, count: c.int, thickness: c.float, loop: bool) ---
@@ -26,6 +28,8 @@ foreign lib {
 	draw_pop_layer               :: proc() -> c.int ---
 	draw_push_color              :: proc(c: Color) ---
 	draw_pop_color               :: proc() -> Color ---
+	draw_push_shape_aa           :: proc(aa: c.float) ---
+	draw_pop_shape_aa            :: proc() -> c.float ---
 	draw_push_vertex_attributes  :: proc(r: c.float, g: c.float, b: c.float, a: c.float) ---
 	draw_push_vertex_attributes2 :: proc(attributes: Color) ---
 	draw_pop_vertex_attributes   :: proc() -> Color ---
@@ -64,6 +68,8 @@ TextEffect :: struct {
 	q0, q1:            V2,
 	w, h:              c.int,
 	color:             Color,
+	colors:            [4]Color,
+	use_colors:        bool,
 	opacity:           c.float,
 	xadvance:          c.float,
 	visible:           bool,
@@ -84,9 +90,10 @@ foreign lib {
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	make_draw_shader       :: proc(path: cstring) -> Shader ---
-	draw_push_shader       :: proc(shader: Shader) ---
-	draw_pop_shader        :: proc() -> Shader ---
+	make_draw_shader :: proc(path: cstring) -> Shader ---
+	shader_reload    :: proc(shader: ^Shader) -> bool ---
+	draw_push_shader :: proc(shader: Shader) ---
+	draw_pop_shader  :: proc() -> Shader ---
 }
 
 DrawFilterMode :: enum {

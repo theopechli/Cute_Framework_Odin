@@ -311,7 +311,6 @@ CF_API void CF_CALL cf_draw_line(CF_V2 p0, CF_V2 p1, float thickness);
  * @param    count        The number of points in the polyline.
  * @param    thickness    The thickness of the line to draw.
  * @param    loop         True to connect the first and last point to form a loop. False otherwise.
- * @param    bevel_count  The number of edges used to smooth corners.
  * @related  cf_draw_line cf_draw_polyline cf_draw_bezier_line cf_draw_bezier_line2 cf_draw_arrow cf_draw_polygon_fill
  */
 CF_API void CF_CALL cf_draw_polyline(const CF_V2* points, int count, float thickness, bool loop);
@@ -594,11 +593,11 @@ CF_API void CF_CALL cf_draw_peek_tri_attributes(CF_Color* a0, CF_Color* a1, CF_C
  */
 typedef struct CF_Vertex
 {
-	/* @member World space position. */
+	/* @member World space position (in_pos_uv.xy). */
 	CF_V2 p;
 
-	/* @member "Homogenous" position transformed by the camera. */
-	CF_V2 posH;
+	/* @member For internal use -- For sprite rendering (in_pos_uv.zw). */
+	CF_V2 uv;
 
 	/* @member For internal use -- For signed-distance functions for rendering shapes. */
 	int n;
@@ -606,35 +605,35 @@ typedef struct CF_Vertex
 	/* @member For internal use -- For signed-distance functions for rendering shapes. */
 	CF_V2 shape[8];
 
-	/* @member For internal use -- For sprite rendering. */
-	CF_V2 uv;
-
 	/* @member Color for rendering shapes (ignored for sprites). */
 	CF_Pixel color;
 
-	/* @member For internal use -- For applying "chubbiness" factor for shapes, or radii on circle/capsule. */
+	/* @member For internal use -- For applying "chubbiness" factor for shapes, or radii on circle/capsule (in_shape.x). */
 	float radius;
 
-	/* @member For internal use -- For shape rendering for border style stroke rendering (no fill). */
+	/* @member For internal use -- For shape rendering for border style stroke rendering (in_shape.y). */
 	float stroke;
 
-	/* @member For internal use -- Factor for the size of antialiasing. */
+	/* @member For internal use -- Factor for the size of antialiasing (in_shape.z). */
 	float aa;
 
-	/* @member For internal use -- The type of shape to be rendered, used by the signed-distance functions within CF's internal fragment shader. */
-	uint8_t type;
+	/* @member For internal use -- Shape type for SDF fragment shader (in_shape.w). Stored as float (0-6). */
+	float type;
 
-	/* @member Used for the alpha-component (transparency). */
-	uint8_t alpha;
+	/* @member Used for the alpha-component, transparency (in_blend_posH.x). Stored as float 0.0-1.0. */
+	float alpha;
 
-	/* @member For internal use -- Whether or not to render shapes as filled or stroked. */
-	uint8_t fill;
+	/* @member For internal use -- Whether or not to render shapes as filled or stroked (in_blend_posH.y). 0.0 or 1.0. */
+	float fill;
 
-	/* @member For internal use -- Currently unused but fills needed padding space. */
-	uint8_t unused;
+	/* @member "Homogenous" position transformed by the camera (in_blend_posH.zw). */
+	CF_V2 posH;
 
 	/* @member Four general purpose floats passed into custom user shaders. */
 	CF_Color attributes;
+
+	/* @member UV bounds for sprite/text glyphs. Zero for shapes. Packed as (uv_min.x, uv_min.y, uv_max.x, uv_max.y). */
+	float uv_bounds[4];
 } CF_Vertex;
 // @end
 
@@ -807,7 +806,7 @@ CF_API float CF_CALL cf_peek_text_wrap_width(void);
 /**
  * @function cf_push_text_vertical_layout
  * @category text
- * @brief    Pushes a whether or not to layout text vertically (as opposed to the default or horizontally).
+ * @brief    Pushes whether or not to layout text vertically (as opposed to the default of horizontally).
  * @param    layout_vertically  True to layout vertically, false otherwise.
  * @related  cf_make_font cf_push_font cf_push_text_vertical_layout cf_pop_text_vertical_layout cf_peek_text_vertical_layout cf_draw_text
  */
@@ -963,6 +962,12 @@ typedef struct CF_TextEffect
 
 	/* @member User-modifiable. The color to render this glyph with. */
 	CF_Color color;
+
+	/* @member User-modifiable. Per-corner colors: [0]=TL, [1]=TR, [2]=BR, [3]=BL. Only used when use_colors is true. */
+	CF_Color colors[4];
+
+	/* @member User-modifiable. If true, use colors[4] per-corner instead of flat color. */
+	bool use_colors;
 
 	/* @member User-modifiable. The opacity to render this glyph with. */
 	float opacity;
@@ -1202,23 +1207,23 @@ CF_API bool CF_CALL cf_peek_text_effect_active(void);
  * @category draw
  * @brief    Pushes a `CF_Rect` for the viewport to render within.
  * @param    viewport     The viewport.
- * @related  TODO
+ * @related  cf_draw_push_viewport cf_draw_pop_viewport cf_draw_peek_viewport
  */
 CF_API void CF_CALL cf_draw_push_viewport(CF_Rect viewport);
 
 /**
  * @function cf_draw_pop_viewport
  * @category draw
- * @brief    TODO
- * @related  TODO
+ * @brief    Pops and returns the last viewport `CF_Rect`.
+ * @related  cf_draw_push_viewport cf_draw_pop_viewport cf_draw_peek_viewport
  */
 CF_API CF_Rect CF_CALL cf_draw_pop_viewport(void);
 
 /**
  * @function cf_draw_peek_viewport
  * @category draw
- * @brief    TODO
- * @related  TODO
+ * @brief    Returns the current viewport `CF_Rect`.
+ * @related  cf_draw_push_viewport cf_draw_pop_viewport cf_draw_peek_viewport
  */
 CF_API CF_Rect CF_CALL cf_draw_peek_viewport(void);
 
@@ -1227,7 +1232,7 @@ CF_API CF_Rect CF_CALL cf_draw_peek_viewport(void);
  * @category draw
  * @brief    Pushes a `CF_Rect` for the scissor to render within.
  * @param    scissor      The scissor box.
- * @related  TODO
+ * @related  cf_draw_push_scissor cf_draw_pop_scissor cf_draw_peek_scissor
  */
 CF_API void CF_CALL cf_draw_push_scissor(CF_Rect scissor);
 
@@ -1235,7 +1240,7 @@ CF_API void CF_CALL cf_draw_push_scissor(CF_Rect scissor);
  * @function cf_draw_pop_scissor
  * @category draw
  * @brief    Pops and returns the last `CF_Rect` for the scissor box.
- * @related  TODO
+ * @related  cf_draw_push_scissor cf_draw_pop_scissor cf_draw_peek_scissor
  */
 CF_API CF_Rect CF_CALL cf_draw_pop_scissor(void);
 
@@ -1243,7 +1248,7 @@ CF_API CF_Rect CF_CALL cf_draw_pop_scissor(void);
  * @function cf_draw_peek_scissor
  * @category draw
  * @brief    Returns the last `CF_Rect` for the scissor box.
- * @related  TODO
+ * @related  cf_draw_push_scissor cf_draw_pop_scissor cf_draw_peek_scissor
  */
 CF_API CF_Rect CF_CALL cf_draw_peek_scissor(void);
 
@@ -1252,21 +1257,23 @@ CF_API CF_Rect CF_CALL cf_draw_peek_scissor(void);
  * @category draw
  * @brief    Pushes a `CF_RenderState` for controlling various rendering settings.
  * @param    render_state  Various types of rendering states.
- * @related  TODO
+ * @related  CF_RenderState cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state
  */
 CF_API void CF_CALL cf_draw_push_render_state(CF_RenderState render_state);
 
 /**
  * @function cf_draw_pop_render_state
  * @category draw
- * @brief    Pops and returns the last `CF_RenderState`.* @related  CF_RenderState cf_draw_filter cf_draw_push_viewport cf_draw_push_scissor cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state cf_render_to cf_app_draw_onto_screen
+ * @brief    Pops and returns the last `CF_RenderState`.
+ * @related  CF_RenderState cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state
  */
 CF_API CF_RenderState CF_CALL cf_draw_pop_render_state(void);
 
 /**
  * @function cf_draw_peek_render_state
  * @category draw
- * @brief    Returns the last `CF_RenderState`.* @related  CF_RenderState cf_draw_filter cf_draw_push_viewport cf_draw_push_scissor cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state cf_render_to cf_app_draw_onto_screen
+ * @brief    Returns the last `CF_RenderState`.
+ * @related  CF_RenderState cf_draw_push_render_state cf_draw_pop_render_state cf_draw_peek_render_state
  */
 CF_API CF_RenderState CF_CALL cf_draw_peek_render_state(void);
 
@@ -1288,6 +1295,7 @@ CF_API CF_RenderState CF_CALL cf_draw_peek_render_state(void);
  *           - 1024
  *           - 2048
  *           - 4096
+ * @related  cf_draw_set_atlas_dimensions cf_render_to cf_draw_sprite
  */
 CF_API void CF_CALL cf_draw_set_atlas_dimensions(int width_in_pixels, int height_in_pixels);
 
@@ -1339,6 +1347,18 @@ CF_API CF_Shader CF_CALL cf_make_draw_shader_from_source(const char* src);
 CF_API CF_Shader CF_CALL cf_make_draw_shader_from_bytecode(CF_DrawShaderBytecode bytecode);
 
 /**
+ * @function cf_shader_reload
+ * @category draw
+ * @brief    Reloads a draw shader from its original file path.
+ * @param    shader     Pointer to the shader handle. Updated in-place on success.
+ * @return   Returns true on success.
+ * @remarks  Only works for shaders originally created with `cf_make_draw_shader`. The shader's path is
+ *           recorded internally at creation time.
+ * @related  CF_Shader cf_make_draw_shader cf_destroy_shader
+ */
+CF_API bool CF_CALL cf_shader_reload(CF_Shader* shader);
+
+/**
  * @function cf_draw_push_shader
  * @category draw
  * @brief    Pushes a custom shader.
@@ -1374,18 +1394,18 @@ CF_API void CF_CALL cf_draw_push_alpha_discard(bool true_enable_alpha_discard);
 /**
  * @function cf_draw_pop_alpha_discard
  * @category draw
- * @brief    TODO
+ * @brief    Pops and returns the last alpha discard state.
  * @remarks  Alpha discarding is useful to throw away pixels with zero alpha, for cutouts or as an optimization, or for certain blending techniques.
- * @related  TODO
+ * @related  cf_draw_push_alpha_discard cf_draw_pop_alpha_discard cf_draw_peek_alpha_discard
  */
 CF_API bool CF_CALL cf_draw_pop_alpha_discard(void);
 
 /**
  * @function cf_draw_peek_alpha_discard
  * @category draw
- * @brief    TODO
+ * @brief    Returns the current alpha discard state.
  * @remarks  Alpha discarding is useful to throw away pixels with zero alpha, for cutouts or as an optimization, or for certain blending techniques.
- * @related  TODO
+ * @related  cf_draw_push_alpha_discard cf_draw_pop_alpha_discard cf_draw_peek_alpha_discard
  */
 CF_API bool CF_CALL cf_draw_peek_alpha_discard(void);
 
@@ -1515,7 +1535,7 @@ CF_API void CF_CALL cf_draw_set_uniform_color(const char* name, CF_Color val);
  * @category draw
  * @brief    Applies the current draw transform to a point.
  * @param    p      The point to transform.
- * @related  TODO
+ * @related  cf_draw_mul cf_draw_transform cf_draw_translate cf_draw_scale cf_draw_rotate
  */
 CF_API CF_V2 CF_CALL cf_draw_mul(CF_V2 p);
 
@@ -1762,7 +1782,7 @@ typedef struct CF_AtlasSubImage
 	/* @member Must be a unique number for all sub-images across all atlases. You should start at 0 and increment for each unique id you need. */
 	uint64_t image_id;
 
-	/* @member The width in height, in pixels, of the sub-image. */
+	/* @member The width and height, in pixels, of the sub-image. */
 	int w, h;
 
 	/* @member u coordinate in the premade atlas. */

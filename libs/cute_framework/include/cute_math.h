@@ -9,7 +9,6 @@
 #define CF_MATH_H
 
 #include "cute_defines.h"
-#include "cute_array.h"
 
 #ifndef CF_SQRTF
 	#include <math.h>
@@ -198,7 +197,7 @@ typedef struct CF_V2
  * @struct   CF_SinCos
  * @category math
  * @brief    Rotation about an axis composed of cos/sin pair.
- * @remarks  You can construct a `CF_SinCos` with the function `cf_sin_cos()/cf_sin_cos(1.0f)` function.
+ * @remarks  You can construct a `CF_SinCos` with the function `cf_sincos()`/`cf_sincos_f()`.
  * @related  CF_SinCos cf_sincos cf_sincos_f cf_x_axis cf_y_axis cf_mul_sc_v2 cf_mul_T_sc_v2
  */
 typedef struct CF_SinCos
@@ -345,7 +344,7 @@ typedef struct CF_Aabb
 	/* @member The min corner of the box. */
 	CF_V2 min;
 
-	/* @member Top max corner of the box. */
+	/* @member The max corner of the box. */
 	CF_V2 max;
 } CF_Aabb;
 // @end
@@ -441,6 +440,7 @@ typedef struct CF_Manifold
  * @function CF_PI
  * @category math
  * @brief    PI the numeric constant.
+ * @related  CF_PI CF_TAU
  */
 #define CF_PI 3.14159265f
 
@@ -448,6 +448,7 @@ typedef struct CF_Manifold
  * @function CF_TAU
  * @category math
  * @brief    TAU (PI * 2) the numeric constant.
+ * @related  CF_PI CF_TAU
  */
 #define CF_TAU (2.0f*3.14159265f)
 
@@ -510,7 +511,7 @@ CF_INLINE CF_V2    cf_min_v2 (CF_V2    a, CF_V2    b) { return (CF_V2){ cf_min_f
  * @brief    Returns the maximum of two values.
  * @related  cf_min cf_max
  */
-#define cf_max(a, b) ((a) < (b) ? (a) : (b))
+#define cf_max(a, b) ((a) > (b) ? (a) : (b))
 #undef cf_max
 #ifdef __cplusplus
 } // extern "C"
@@ -843,16 +844,16 @@ CF_INLINE int cf_greater_equal(CF_V2 a, CF_V2 b) { return a.x >= b.x && a.y >= b
 /**
  * @function cf_equal
  * @category math
- * @brief    TODO
- * @related  TODO
+ * @brief    Returns true if two vectors are exactly equal.
+ * @related  cf_equal cf_not_equal cf_less cf_greater cf_less_equal cf_greater_equal
  */
 CF_INLINE int cf_equal(CF_V2 a, CF_V2 b) { return a.x == b.x && a.y == b.y; }
 
 /**
  * @function cf_equals
  * @category math
- * @brief    TODO
- * @related  TODO
+ * @brief    Returns true if two vectors are exactly equal (alias for `cf_equal`).
+ * @related  cf_equal cf_not_equal cf_less cf_greater cf_less_equal cf_greater_equal
  */
 CF_INLINE int cf_equals(CF_V2 a, CF_V2 b) { return a.x == b.x && a.y == b.y; }
 
@@ -1224,6 +1225,7 @@ CF_INLINE double cf_exp_d(double x) { return CF_EXP(x); }
  * @category math
  * @brief    Returns the smoothstep of a float from 0.0f to 1.0f.
  * @remarks  Here is a great link to [visualize each easing function](https://easings.net/).
+ * @related  cf_smoothstep cf_quad_in cf_quad_out cf_cube_in cf_cube_out
  */
 CF_INLINE float cf_smoothstep(float x) { return x * x * (3.0f - 2.0f * x); }
 
@@ -1701,6 +1703,45 @@ CF_INLINE CF_M2x2 cf_mul_T_m2(CF_M2x2 a, CF_M2x2 b) { CF_M2x2 c; c.x = cf_mul_T_
 
 CF_INLINE CF_V2 cf_mul_m32_v2(CF_M3x2 a, CF_V2 b) { return cf_add(cf_mul_m2_v2(a.m, b), a.p); }
 CF_INLINE CF_M3x2 cf_mul_m32(CF_M3x2 a, CF_M3x2 b) { CF_M3x2 c; c.m = cf_mul_m2(a.m, b.m); c.p = cf_add(cf_mul_m2_v2(a.m, b.p), a.p); return c; }
+
+// Macro alternatives -- flat expansion, guaranteed inline in debug builds.
+// MSVC /Od ignores __forceinline, so the above functions become real calls.
+// These macros avoid the deep call chains (mul_m32 -> mul_m2 -> mul_m2_v2 -> ...).
+// All arguments must be side-effect-free lvalues or temporaries.
+
+// M3x2 * V2 -> writes CF_V2 into dst.
+#define CF_MUL_M32_V2(dst, a, b) do { \
+	float _cf_bx = (b).x, _cf_by = (b).y; \
+	(dst).x = (a).m.x.x * _cf_bx + (a).m.y.x * _cf_by + (a).p.x; \
+	(dst).y = (a).m.x.y * _cf_bx + (a).m.y.y * _cf_by + (a).p.y; \
+} while (0)
+
+// M3x2 * M3x2 -> writes CF_M3x2 into dst. Safe when dst aliases a or b.
+#define CF_MUL_M32_M32(dst, a, b) do { \
+	float _cf_axx = (a).m.x.x, _cf_axy = (a).m.x.y; \
+	float _cf_ayx = (a).m.y.x, _cf_ayy = (a).m.y.y; \
+	float _cf_apx = (a).p.x,   _cf_apy = (a).p.y; \
+	float _cf_bxx = (b).m.x.x, _cf_bxy = (b).m.x.y; \
+	float _cf_byx = (b).m.y.x, _cf_byy = (b).m.y.y; \
+	float _cf_bpx = (b).p.x,   _cf_bpy = (b).p.y; \
+	(dst).m.x.x = _cf_axx * _cf_bxx + _cf_ayx * _cf_bxy; \
+	(dst).m.x.y = _cf_axy * _cf_bxx + _cf_ayy * _cf_bxy; \
+	(dst).m.y.x = _cf_axx * _cf_byx + _cf_ayx * _cf_byy; \
+	(dst).m.y.y = _cf_axy * _cf_byx + _cf_ayy * _cf_byy; \
+	(dst).p.x   = _cf_axx * _cf_bpx + _cf_ayx * _cf_bpy + _cf_apx; \
+	(dst).p.y   = _cf_axy * _cf_bpx + _cf_ayy * _cf_bpy + _cf_apy; \
+} while (0)
+
+// Build M3x2 from position + scale + radians.
+#define CF_MAKE_TSR(dst, pos, scl, rad) do { \
+	float _cf_c = CF_COSF(rad), _cf_s = CF_SINF(rad); \
+	float _cf_sx = (scl).x, _cf_sy = (scl).y; \
+	(dst).m.x.x =  _cf_c * _cf_sx; \
+	(dst).m.x.y = -_cf_s * _cf_sx; \
+	(dst).m.y.x =  _cf_s * _cf_sy; \
+	(dst).m.y.y =  _cf_c * _cf_sy; \
+	(dst).p = (pos); \
+} while (0)
 
 CF_INLINE CF_V2 cf_mul_tf_v2(CF_Transform a, CF_V2 b) { return cf_add(cf_mul_sc_v2(a.r, b), a.p); }
 CF_INLINE CF_V2 cf_mul_T_tf_v2(CF_Transform a, CF_V2 b) { return cf_mul_T_sc_v2(a.r, cf_sub(b, a.p)); }
@@ -2402,7 +2443,7 @@ CF_INLINE CF_V2 cf_bottom(CF_Aabb bb) { return cf_v2((bb.min.x + bb.max.x) * 0.5
 /**
  * @function cf_right
  * @category math
- * @brief    Returns the bottom of the aabb.
+ * @brief    Returns the right side of the aabb.
  * @related  CF_Aabb cf_min_aabb cf_max_aabb cf_midpoint cf_center cf_top_left cf_top_right cf_bottom_left cf_bottom_right
  */
 CF_INLINE CF_V2 cf_right(CF_Aabb bb) { return cf_v2(bb.max.x, (bb.min.y + bb.max.y) * 0.5f); }
@@ -2551,7 +2592,7 @@ CF_INLINE CF_Circle cf_mul_tf_circle(CF_Transform tx, CF_Circle a) { CF_Circle b
 /**
  * @function cf_make_ray
  * @category collision
- * @brief    Returns an initialize `CF_Ray`.
+ * @brief    Returns an initialized `CF_Ray`.
  * @related  CF_Ray
  */
 CF_INLINE CF_Ray cf_make_ray(CF_V2 start, CF_V2 direction_normalized, float length) { CF_Ray ray; ray.p = start; ray.d = direction_normalized; ray.t = length; return ray; }
@@ -2629,31 +2670,31 @@ CF_INLINE float cf_distance_sq(CF_V2 a, CF_V2 b, CF_V2 p)
 /**
  * @function cf_center_of_mass
  * @category collision
- * @brief    TODO
- * @related  TODO
+ * @brief    Returns the center of mass of a convex polygon.
+ * @related  CF_Poly cf_center_of_mass cf_calc_area cf_make_poly cf_centroid
  */
 CF_API CF_V2 CF_CALL cf_center_of_mass(CF_Poly poly);
 
 /**
  * @function cf_calc_area
  * @category collision
- * @brief    TODO
- * @related  TODO
+ * @brief    Returns the signed area of a convex polygon.
+ * @related  CF_Poly cf_center_of_mass cf_calc_area cf_make_poly cf_centroid
  */
 CF_API float CF_CALL cf_calc_area(CF_Poly poly);
 
 /**
  * @struct   CF_SliceOutput
  * @category collision
- * @brief    TODO
- * @related  TODO
+ * @brief    Contains the two halves of a polygon after slicing by a halfspace.
+ * @related  CF_SliceOutput cf_slice CF_Poly CF_Halfspace
  */
 typedef struct CF_SliceOutput
 {
-	/* @member TODO */
+	/* @member The polygon on the front (positive) side of the slice plane. */
 	CF_Poly front;
 
-	/* @member TODO */
+	/* @member The polygon on the back (negative) side of the slice plane. */
 	CF_Poly back;
 } CF_SliceOutput;
 // @end
@@ -2661,8 +2702,8 @@ typedef struct CF_SliceOutput
 /**
  * @function cf_slice
  * @category collision
- * @brief    TODO
- * @related  TODO
+ * @brief    Slices a convex polygon by a halfspace, returning the two resulting halves.
+ * @related  CF_SliceOutput cf_slice CF_Poly CF_Halfspace
  */
 CF_API CF_SliceOutput CF_CALL cf_slice(CF_Halfspace slice_plane, CF_Poly slice_me, const float k_epsilon);
 
@@ -2767,6 +2808,7 @@ CF_API void CF_CALL cf_make_poly(CF_Poly* p);
  * @function cf_centroid
  * @category math
  * @brief    Returns the centroid of a set of vertices.
+ * @related  CF_Poly cf_centroid cf_center_of_mass cf_hull cf_make_poly
  */
 CF_API CF_V2 CF_CALL cf_centroid(const CF_V2* verts, int count);
 

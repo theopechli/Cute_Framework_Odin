@@ -2,11 +2,13 @@ package cute_framework
 
 import "core:c"
 
-Texture  :: struct { id: c.uint64_t }
-Canvas   :: struct { id: c.uint64_t }
-Mesh     :: struct { id: c.uint64_t }
-Material :: struct { id: c.uint64_t }
-Shader   :: struct { id: c.uint64_t }
+Texture       :: struct { id: c.uint64_t }
+Canvas        :: struct { id: c.uint64_t }
+Mesh          :: struct { id: c.uint64_t }
+Material      :: struct { id: c.uint64_t }
+Shader        :: struct { id: c.uint64_t }
+ComputeShader :: struct { id: c.uint64_t }
+StorageBuffer :: struct { id: c.uint64_t }
 
 PixelFormat :: enum c.int {
 	INVALID = -1,
@@ -136,6 +138,59 @@ foreign lib {
 	destroy_shader    :: proc(shader: Shader) ---
 }
 
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	make_compute_shader    :: proc(path: cstring) -> ComputeShader ---
+	destroy_compute_shader :: proc(shader: ComputeShader) ---
+}
+
+StorageBufferParams :: struct {
+	size:              c.int,
+	compute_readable:  bool,
+	compute_writable:  bool,
+	graphics_readable: bool,
+}
+
+storage_buffer_defaults :: #force_inline proc "c" (size: c.int) -> StorageBufferParams {
+	return { size = size, compute_readable = true }
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	make_storage_buffer    :: proc(params: StorageBufferParams) -> StorageBuffer ---
+	update_storage_buffer  :: proc(buffer: StorageBuffer, data: rawptr, size: c.int) ---
+	destroy_storage_buffer :: proc(buffer: StorageBuffer) ---
+}
+
+ComputeDispatch :: struct {
+	rw_buffers:       ^StorageBuffer,
+	rw_buffer_count:  c.int,
+	rw_textures:      ^Texture,
+	rw_texture_count: c.int,
+
+	ro_buffers:       ^StorageBuffer,
+	ro_buffer_count:  c.int,
+	ro_textures:      ^Texture,
+	ro_texture_count: c.int,
+
+	group_count_x: c.int,
+	group_count_y: c.int,
+	group_count_z: c.int,
+}
+
+compute_dispatch_defaults :: #force_inline proc "c" (gx: c.int, gy: c.int, gz: c.int) -> ComputeDispatch {
+	return {
+		group_count_x = gx,
+		group_count_y = gy,
+		group_count_z = gz,
+	}
+}
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	dispatch_compute :: proc(shader: ComputeShader, material: Material, dispatch: ComputeDispatch) ---
+}
+
 SampleCount :: enum c.int {
 	_1,
 	_2,
@@ -155,6 +210,7 @@ CanvasParams :: struct {
 foreign lib {
 	canvas_defaults                 :: proc(w: c.int, h: c.int) -> CanvasParams ---
 	make_canvas                     :: proc(canvas_params: CanvasParams) -> Canvas ---
+	destroy_canvas                  :: proc(canvas: Canvas) ---
 	canvas_get_target               :: proc(canvas: Canvas) -> Texture ---
 	canvas_get_depth_stencil_target :: proc(canvas: Canvas) -> Texture ---
 	clear_canvas                    :: proc(canvas: Canvas) ---
@@ -340,6 +396,8 @@ foreign lib {
 	material_set_texture_fs   :: proc(material: Material, name: cstring, texture: Texture) ---
 	material_set_uniform_vs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
 	material_set_uniform_fs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
+	material_set_texture_cs   :: proc(material: Material, name: cstring, texture: Texture) ---
+	material_set_uniform_cs   :: proc(material: Material, name: cstring, data: rawptr, type: UniformType, array_length: c.int) ---
 	clear_color               :: proc(red: c.float, green: c.float, blue: c.float, alpha: c.float) ---
 	apply_canvas              :: proc(canvas: Canvas, clear: bool) ---
 	apply_viewport            :: proc(x: c.int, y: c.int, w: c.int, h: c.int) ---

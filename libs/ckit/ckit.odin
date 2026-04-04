@@ -79,7 +79,7 @@ map_get :: #force_inline proc "c" (m: [^]^$T, k: $I) -> ^T {
 	if idx >= 0 {
 		return m[idx]
 	}
-	return {}
+	return nil
 }
 
 @(default_calling_convention="c", link_prefix="ck_", require_results)

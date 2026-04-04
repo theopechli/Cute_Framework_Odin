@@ -6,6 +6,7 @@ Color :: distinct [4]c.float
 
 Pixel :: struct #raw_union {
 	colors: [4]c.uint8_t,
+	_:      [4]c.uint8_t,
 	val:    c.uint32_t,
 }
 
@@ -30,6 +31,9 @@ color_clear     :: #force_inline proc "c" () -> Color { return make_color_rgba_f
 color_black     :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.0, 0.0 , 0.0     ) }
 color_white     :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 1.0 , 1.0     ) }
 color_red       :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.0 , 0.0     ) }
+color_green     :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.0, 1.0 , 0.0     ) }
 color_orange    :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.65, 0.0     ) }
+color_purple    :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.0 , 1.0     ) }
 color_grey      :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.5, 0.5 , 0.5     ) }
 color_cyan      :: #force_inline proc "c" () -> Color { return make_color_rgb(   68 , 220 , 235     ) }
+color_magenta   :: #force_inline proc "c" () -> Color { return make_color_rgb(   224, 70  , 224     ) }

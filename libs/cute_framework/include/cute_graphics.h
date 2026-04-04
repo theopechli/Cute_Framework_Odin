@@ -75,6 +75,42 @@ typedef struct CF_Canvas { uint64_t id; } CF_Canvas;
 // @end
 
 /**
+ * @struct   CF_Readback
+ * @category graphics
+ * @brief    An opaque handle representing an async GPU readback operation.
+ * @example > Rendering to a canvas with cf_render_to, then reading back pixel data.
+ *     // Create a canvas.
+ *     CF_Canvas canvas = cf_make_canvas(cf_canvas_defaults(256, 256));
+ *
+ *     // Queue up draw calls and flush them to the canvas.
+ *     cf_draw_sprite(&my_sprite);
+ *     cf_render_to(canvas, true);
+ *
+ *     // Initiate async readback (ends the active render pass automatically).
+ *     // Save this `CF_Readback` for later! This is an *async* object.
+ *     CF_Readback readback = cf_canvas_readback(canvas);
+ *
+ *     // ...Elsewhere, and some # of frames later...
+ *     // Poll each frame until the GPU finishes the download.
+ *     if (cf_readback_ready(readback)) {
+ *         int size = cf_readback_size(readback);
+ *         void* pixels = cf_alloc(size);
+ *         cf_readback_data(readback, pixels, size);
+ *         // pixels now holds RGBA8 data (256 * 256 * 4 bytes).
+ *         // ... use the pixel data ...
+ *         cf_free(pixels);
+ *         cf_destroy_readback(readback);
+ *     }
+ * @remarks  A readback initiates an async GPU-to-CPU copy of pixel data from a canvas.
+ *           Poll with `cf_readback_ready` and retrieve data with `cf_readback_data`.
+ *           The pixel format matches the canvas target format (typically RGBA8, 4 bytes per pixel).
+ *           On web/Emscripten builds, readback is unsupported and returns a zero handle.
+ * @related  CF_Canvas cf_canvas_readback cf_readback_ready cf_readback_data cf_readback_size cf_destroy_readback
+ */
+typedef struct CF_Readback { uint64_t id; } CF_Readback;
+// @end
+
+/**
  * @struct   CF_Mesh
  * @category graphics
  * @brief    An opaque handle representing a mesh.
@@ -648,6 +684,14 @@ CF_API void CF_CALL cf_texture_update_mip(CF_Texture texture, void* data, int si
 CF_API void CF_CALL cf_generate_mipmaps(CF_Texture texture);
 
 /**
+ * @function cf_gpu_sync
+ * @category graphics
+ * @brief    Submits the command buffer, waits for GPU completion via fence, then reacquires.
+ * @remarks  Forces GPU/CPU serialization.
+ */
+CF_API void CF_CALL cf_gpu_sync(void);
+
+/**
  * @function cf_texture_handle
  * @category graphics
  * @brief    Returns an SDL_GPUTexture* casted to a `uint64_t`.
@@ -675,11 +719,11 @@ CF_API uint64_t CF_CALL cf_texture_binding_handle(CF_Texture texture);
  * @related  CF_Shader cf_shader_directory cf_make_shader
  */
 #define CF_SHADER_STAGE_DEFS \
-	/* @entry */                      \
+	/* @entry Vertex shader stage. */   \
 	CF_ENUM(SHADER_STAGE_VERTEX,   0) \
-	/* @entry */                      \
+	/* @entry Fragment shader stage. */ \
 	CF_ENUM(SHADER_STAGE_FRAGMENT, 1) \
-	/* @entry */                      \
+	/* @entry Compute shader stage. */ \
 	CF_ENUM(SHADER_STAGE_COMPUTE,  2) \
 	/* @end */
 
@@ -801,6 +845,7 @@ CF_API CF_ShaderBytecode CF_CALL cf_compile_shader_to_bytecode(const char* shade
  * @param    bytecode   The bytecode blob to free.
  * @remarks  This function must only be called on the bytecode blob returned from `cf_compile_shader_to_bytecode`.
  *           It cannot be called on the bytecode blob generated as a header from the `cute-shaderc` compiler.
+ * @related  CF_ShaderBytecode cf_compile_shader_to_bytecode cf_make_shader_from_bytecode cf_free_shader_bytecode
  */
 CF_API void CF_CALL cf_free_shader_bytecode(CF_ShaderBytecode bytecode);
 
@@ -902,6 +947,18 @@ CF_API CF_ComputeShader CF_CALL cf_make_compute_shader_from_bytecode(CF_ShaderBy
  * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader
  */
 CF_API void CF_CALL cf_destroy_compute_shader(CF_ComputeShader shader);
+
+/**
+ * @function cf_compute_shader_reload
+ * @category graphics
+ * @brief    Reloads a compute shader from its original file path.
+ * @param    shader     Pointer to the compute shader handle. Updated in-place on success.
+ * @return   Returns true on success.
+ * @remarks  Only works for compute shaders originally created with `cf_make_compute_shader`. The shader's
+ *           path is recorded internally at creation time.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader
+ */
+CF_API bool CF_CALL cf_compute_shader_reload(CF_ComputeShader* shader);
 
 //--------------------------------------------------------------------------------------------------
 // Storage Buffers.
@@ -1169,6 +1226,64 @@ CF_API CF_Texture CF_CALL cf_canvas_get_depth_stencil_target(CF_Canvas canvas);
 CF_API void CF_CALL cf_clear_canvas(CF_Canvas canvas);
 
 //--------------------------------------------------------------------------------------------------
+// Readback.
+
+/**
+ * @function cf_canvas_readback
+ * @category graphics
+ * @brief    Initiates an async GPU-to-CPU copy of pixel data from a canvas.
+ * @param    canvas  The canvas to read back pixel data from.
+ * @return   Returns a `CF_Readback` handle. Returns a zero handle on failure or if unsupported (e.g. web/Emscripten).
+ * @remarks  Ends any active render pass silently. Each readback uses its own command buffer and fence.
+ *           For screen readback, use `cf_canvas_readback(cf_app_get_canvas())`.
+ * @related  CF_Readback cf_readback_ready cf_readback_data cf_readback_size cf_destroy_readback
+ */
+CF_API CF_Readback CF_CALL cf_canvas_readback(CF_Canvas canvas);
+
+/**
+ * @function cf_readback_ready
+ * @category graphics
+ * @brief    Polls whether the async readback has completed.
+ * @param    readback  The readback handle to poll.
+ * @return   Returns true once the GPU has finished the download. Caches the result after first true.
+ * @related  CF_Readback cf_canvas_readback cf_readback_data cf_readback_size cf_destroy_readback
+ */
+CF_API bool CF_CALL cf_readback_ready(CF_Readback readback);
+
+/**
+ * @function cf_readback_data
+ * @category graphics
+ * @brief    Copies readback pixel data into the provided buffer.
+ * @param    readback  The readback handle.
+ * @param    data      Pointer to the destination buffer.
+ * @param    size      Size of the destination buffer in bytes.
+ * @return   Returns the number of bytes copied, or 0 if the readback is not yet ready. Copies `min(size, total)` bytes.
+ * @remarks  Pixel format matches the canvas target format (typically RGBA8, 4 bytes per pixel).
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_size cf_destroy_readback
+ */
+CF_API int CF_CALL cf_readback_data(CF_Readback readback, void* data, int size);
+
+/**
+ * @function cf_readback_size
+ * @category graphics
+ * @brief    Returns the total size in bytes of the readback data.
+ * @param    readback  The readback handle.
+ * @return   Returns `w * h * bytes_per_pixel` for the readback, or 0 if the handle is invalid.
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_data cf_destroy_readback
+ */
+CF_API int CF_CALL cf_readback_size(CF_Readback readback);
+
+/**
+ * @function cf_destroy_readback
+ * @category graphics
+ * @brief    Destroys a readback handle and releases all associated resources.
+ * @param    readback  The readback handle to destroy.
+ * @remarks  If the readback is still in-flight, this will block until the GPU completes.
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_data cf_readback_size
+ */
+CF_API void CF_CALL cf_destroy_readback(CF_Readback readback);
+
+//--------------------------------------------------------------------------------------------------
 // Mesh.
 
 /**
@@ -1252,7 +1367,7 @@ typedef enum CF_VertexFormat
 /**
  * @function cf_vertex_format_string
  * @category graphics
- * @brief    Frees up a `CF_Canvas` created by `cf_make_canvas`.
+ * @brief    Returns a `CF_VertexFormat` converted to a C string.
  * @related  CF_VertexFormat cf_vertex_format_string CF_VertexAttribute cf_mesh_set_attributes
  */
 CF_INLINE const char* cf_vertex_format_string(CF_VertexFormat format) {
@@ -1533,7 +1648,7 @@ typedef enum CF_BlendOp
  * @function cf_blend_op_string
  * @category graphics
  * @brief    Returns a `CF_BlendOp` converted to a C string.
- * @related  CF_StencilOp cf_stencil_op_string CF_StencilFunction
+ * @related  CF_BlendOp cf_blend_op_string CF_BlendFactor CF_RenderState
  */
 CF_INLINE const char* cf_blend_op_string(CF_BlendOp op) {
 	switch (op) {
@@ -2100,17 +2215,19 @@ CF_API void CF_CALL cf_apply_scissor(int x, int y, int w, int h);
  * @category graphics
  * @brief    Sets the stencil reference value.
  * @param    reference      The value to set the stencil reference to.
+ * @related  cf_apply_stencil_reference cf_apply_blend_constants cf_apply_canvas cf_apply_viewport cf_apply_scissor
  */
 CF_API void CF_CALL cf_apply_stencil_reference(int reference);
 
 /**
  * @function cf_apply_blend_constants
  * @category graphics
- * @brief    Sets the stencil reference value.
+ * @brief    Sets the blend constant values used for blend modes that reference blend constants.
  * @param    r      The red blend constant.
  * @param    g      The green blend constant.
  * @param    b      The blue blend constant.
  * @param    a      The alpha blend constant.
+ * @related  cf_apply_stencil_reference cf_apply_blend_constants cf_apply_canvas cf_apply_viewport cf_apply_scissor
  */
 CF_API void CF_CALL cf_apply_blend_constants(float r, float g, float b, float a);
 
@@ -2175,6 +2292,11 @@ CF_INLINE void destroy_canvas(CF_Canvas canvas) { cf_destroy_canvas(canvas); }
 CF_INLINE CF_Texture canvas_get_target(CF_Canvas canvas) { return cf_canvas_get_target(canvas); }
 CF_INLINE CF_Texture canvas_get_depth_stencil_target(CF_Canvas canvas) { return cf_canvas_get_depth_stencil_target(canvas); }
 CF_INLINE void clear_canvas(CF_Canvas canvas) { cf_clear_canvas(canvas); }
+CF_INLINE CF_Readback canvas_readback(CF_Canvas canvas) { return cf_canvas_readback(canvas); }
+CF_INLINE bool readback_ready(CF_Readback readback) { return cf_readback_ready(readback); }
+CF_INLINE int readback_data(CF_Readback readback, void* data, int size) { return cf_readback_data(readback, data, size); }
+CF_INLINE int readback_size(CF_Readback readback) { return cf_readback_size(readback); }
+CF_INLINE void destroy_readback(CF_Readback readback) { cf_destroy_readback(readback); }
 CF_INLINE CF_Mesh make_mesh(int vertex_buffer_size_in_bytes, const CF_VertexAttribute* attributes, int attribute_count, int vertex_stride) { return cf_make_mesh(vertex_buffer_size_in_bytes, attributes, attribute_count, vertex_stride); }
 CF_INLINE void destroy_mesh(CF_Mesh mesh) { cf_destroy_mesh(mesh); }
 CF_INLINE void mesh_update_vertex_data(CF_Mesh mesh, void* data, int count) { cf_mesh_update_vertex_data(mesh, data, count); }
