@@ -123,11 +123,12 @@ TextureParams :: struct {
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
-	texture_defaults :: proc(w: c.int, h: c.int) -> TextureParams ---
-	make_texture     :: proc(texture_params: TextureParams) -> Texture ---
-	destroy_texture  :: proc(texture: Texture) ---
-	texture_update   :: proc(texture: Texture, data: rawptr, size: c.int) ---
-	texture_handle   :: proc(texture: Texture) -> c.uint64_t ---
+	texture_defaults       :: proc(w: c.int, h: c.int) -> TextureParams ---
+	make_texture           :: proc(texture_params: TextureParams) -> Texture ---
+	destroy_texture        :: proc(texture: Texture) ---
+	texture_update         :: proc(texture: Texture, data: rawptr, size: c.int) ---
+	texture_handle         :: proc(texture: Texture) -> c.uint64_t ---
+	texture_binding_handle :: proc(texture: Texture) -> c.uint64_t ---
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")

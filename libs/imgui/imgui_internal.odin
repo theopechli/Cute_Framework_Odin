@@ -3,11 +3,11 @@ package imgui
 import "core:c"
 
 when ODIN_OS == .Windows {
-	foreign import lib "../cute_framework/windows/cute.lib"
+	foreign import lib "../cute_framework/lib/cute.lib"
 } else when ODIN_OS == .Linux {
-	foreign import lib "../cute_framework/linux/libcute.so"
+	foreign import lib "../cute_framework/lib/libcute.so"
 } else when ODIN_OS == .Darwin {
-	foreign import lib "../cute_framework/darwin/libcute.a"
+	foreign import lib "../cute_framework/lib/libcute.a"
 }
 
 ////////////////////////////////////////////////////////////

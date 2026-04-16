@@ -2207,6 +2207,7 @@ foreign lib {
 	// - Note that Image() may add +2.0f to provided size if a border is visible, ImageButton() adds style.FramePadding*2.0f to provided size.
 	// - ImageButton() draws a background based on regular Button() color + optionally an inner background if specified.
 	@(link_name="ImGui_Image")       Image       :: proc(tex_ref: TextureRef, image_size: Vec2) ---
+	@(link_name="ImGui_ImageEx")     ImageEx     :: proc(tex_ref: TextureRef, image_size: Vec2, uv0: Vec2 = {}, uv1: Vec2 = {1, 1}) ---
 	@(link_name="ImGui_ImageButton") ImageButton :: proc(str_id: cstring, tex_ref: TextureRef, image_size: Vec2) -> bool ---
 	// Widgets: Combo Box (Dropdown)
 	// - The BeginCombo()/EndCombo() api allows you to manage your contents and selection state however you want it, by creating e.g. Selectable() items.
@@ -2346,7 +2347,8 @@ foreign lib {
 	@(link_name="ImGui_EndMainMenuBar")   EndMainMenuBar   :: proc()                                                                                              --- // only call EndMainMenuBar() if BeginMainMenuBar() returns true!
 	@(link_name="ImGui_BeginMenu")        BeginMenu        :: proc(label: cstring, enabled: bool = true) -> bool                                                  --- // create a sub-menu entry. only call EndMenu() if this returns true!
 	@(link_name="ImGui_EndMenu")          EndMenu          :: proc()                                                                                              --- // only call EndMenu() if BeginMenu() returns true!
-	@(link_name="ImGui_MenuItem")         MenuItem         :: proc(label: cstring, shortcut: cstring = nil, selected: bool = false, enabled: bool = true) -> bool --- // return true when activated.
+	@(link_name="ImGui_MenuItem")         MenuItem         :: proc(label: cstring) -> bool --- // return true when activated.
+	@(link_name="ImGui_MenuItemEx")       MenuItemEx       :: proc(label: cstring, shortcut: cstring = nil, selected: bool = false, enabled: bool = true) -> bool --- // return true when activated.
 	@(link_name="ImGui_MenuItemBoolPtr")  MenuItemBoolPtr  :: proc(label: cstring, shortcut: cstring, p_selected: ^bool, enabled: bool = true) -> bool            --- // return true when activated + toggle (*p_selected) if p_selected != NULL
 	// Tooltips
 	// - Tooltips are windows following the mouse. They do not take focus away.
@@ -2802,7 +2804,8 @@ foreign lib {
 	// - Read FAQ to understand what ImTextureID is.
 	// - "p_min" and "p_max" represent the upper-left and lower-right corners of the rectangle.
 	// - "uv_min" and "uv_max" represent the normalized texture coordinates to use for those corners. Using (0,0)->(1,1) texture coordinates will generally display the entire texture.
-	@(link_name="ImDrawList_AddImage")        DrawList_AddImage        :: proc(self: ^DrawList, user_texture_id: TextureID, p_min: Vec2, p_max: Vec2, uv_min: Vec2 = {0, 0}, uv_max: Vec2 = {1, 1}, col: u32 = 0xff_ff_ff_ff)                                                 ---
+	@(link_name="ImDrawList_AddImage")        DrawList_AddImage        :: proc(self: ^DrawList, user_texture_id: TextureID, p_min: Vec2, p_max: Vec2)                                                 ---
+	@(link_name="ImDrawList_AddImageEx")      DrawList_AddImageEx      :: proc(self: ^DrawList, user_texture_id: TextureID, p_min: Vec2, p_max: Vec2, uv_min: Vec2 = {0, 0}, uv_max: Vec2 = {1, 1}, col: u32 = 0xff_ff_ff_ff)                                                 ---
 	@(link_name="ImDrawList_AddImageQuad")    DrawList_AddImageQuad    :: proc(self: ^DrawList, user_texture_id: TextureID, p1: Vec2, p2: Vec2, p3: Vec2, p4: Vec2, uv1: Vec2 = {0, 0}, uv2: Vec2 = {1, 0}, uv3: Vec2 = {1, 1}, uv4: Vec2 = {0, 1}, col: u32 = 0xff_ff_ff_ff) ---
 	@(link_name="ImDrawList_AddImageRounded") DrawList_AddImageRounded :: proc(self: ^DrawList, user_texture_id: TextureID, p_min: Vec2, p_max: Vec2, uv_min: Vec2, uv_max: Vec2, col: u32, rounding: f32, flags: DrawFlags = {})                                             ---
 	// Stateful path API, add points then finish with PathFillConvex() or PathStroke()

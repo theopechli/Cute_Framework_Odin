@@ -67,4 +67,5 @@ foreign lib {
 	app_set_borderless_fullscreen_mode :: proc() ---
 	app_set_fullscreen_mode            :: proc() ---
 	app_get_framerate                  :: proc() -> c.float ---
+	app_get_smoothed_framerate         :: proc() -> c.float ---
 }

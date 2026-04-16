@@ -32,6 +32,7 @@ color_black     :: #force_inline proc "c" () -> Color { return make_color_rgb_f(
 color_white     :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 1.0 , 1.0     ) }
 color_red       :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.0 , 0.0     ) }
 color_green     :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.0, 1.0 , 0.0     ) }
+color_blue      :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.0, 0.0 , 1.0     ) }
 color_orange    :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.65, 0.0     ) }
 color_purple    :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 1.0, 0.0 , 1.0     ) }
 color_grey      :: #force_inline proc "c" () -> Color { return make_color_rgb_f( 0.5, 0.5 , 0.5     ) }

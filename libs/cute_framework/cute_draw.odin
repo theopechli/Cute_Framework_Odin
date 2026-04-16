@@ -122,6 +122,7 @@ foreign lib {
 	draw_projection        :: proc(projection: M3x2) ---
 	world_to_screen        :: proc(point: V2) -> V2 ---
 	screen_to_world        :: proc(point: V2) -> V2 ---
+	screen_bounds_to_world :: proc() -> Aabb ---
 	draw_canvas            :: proc(canvas: Canvas, position: V2, scale: V2) ---
 	render_to              :: proc(canvas: Canvas, clear: bool = false) ---
 }

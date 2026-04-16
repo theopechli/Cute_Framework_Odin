@@ -80,6 +80,11 @@ foreign lib {
 	sprite_will_finish :: proc(sprite: ^Sprite) -> bool ---
 }
 
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	sprite_get_pixels :: proc(sprite: ^Sprite, blend_index: c.int, animation: cstring, frame_index: c.int) -> Image ---
+}
+
 sprite_pause :: #force_inline proc "c" (sprite: ^Sprite) {
 	assert_contextless(sprite != nil)
 	sprite.paused = true
