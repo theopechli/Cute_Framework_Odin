@@ -56,28 +56,41 @@ foreign lib {
 }
 
 TextEffect :: struct {
-	effect_name:       cstring,
-	on_begin:          bool,
-	on_end:            bool,
-	character:         c.int,
-	index_into_string: c.int,
-	index_into_effect: c.int,
-	glyph_count:       c.int,
-	elapsed:           c.float,
-	center:            V2,
-	q0, q1:            V2,
-	w, h:              c.int,
-	color:             Color,
-	colors:            [4]Color,
-	use_colors:        bool,
-	opacity:           c.float,
-	xadvance:          c.float,
-	visible:           bool,
-	font_size:         c.float,
+	effect_name:          cstring,
+	text_without_markups: cstring,
+	on_begin:             c.bool,
+	on_end:               c.bool,
+	character:            c.int,
+	index_into_string:    c.int,
+	index_into_effect:    c.int,
+	glyph_count:          c.int,
+	elapsed:              c.float,
+	center:               V2,
+	q0,                   q1: V2,
+	w,                    h:  c.int,
+	color:                Color,
+	colors:               [4]Color,
+	use_colors:           c.bool,
+	opacity:              c.float,
+	xadvance:             c.float,
+	visible:              c.bool,
+	font_size:            c.float,
+}
+
+
+TextEffectFn :: #type proc "c" (fx: ^TextEffect) -> c.bool
+
+@(link_prefix = "cf_", default_calling_convention = "c")
+foreign lib {
+	text_effect_register   :: proc(name: cstring, fn: TextEffectFn) ---
+	text_effect_get_number :: proc(fx: ^TextEffect, key: cstring, default_val: c.double) -> c.double ---
+	text_effect_get_color  :: proc(fx: ^TextEffect, key: cstring, default_val: Color) -> Color ---
+	text_effect_get_string :: proc(fx: ^TextEffect, key: cstring, default_val: cstring) -> cstring ---
 }
 
 @(link_prefix = "cf_", default_calling_convention = "c")
 foreign lib {
+	text_without_markups    :: proc(text: cstring) -> cstring ---
 	push_text_effect_active :: proc(effects_on: bool) ---
 	pop_text_effect_active  :: proc() -> bool ---
 	draw_push_viewport      :: proc(viewport: Rect) ---
