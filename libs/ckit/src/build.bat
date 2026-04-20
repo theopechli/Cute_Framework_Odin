@@ -2,7 +2,7 @@
 
 REM Static library
 if not exist "..\lib" mkdir ..\lib
-cl -nologo -MT -TC -O2 -c ckit.c
+cl -nologo -MT -TC /std:clatest /experimental:c11atomics -O2 -c ckit.c
 lib -nologo ckit.obj -out:..\lib\ckit.lib
 del *.obj
 

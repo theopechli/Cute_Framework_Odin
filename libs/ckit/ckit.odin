@@ -1,6 +1,5 @@
 package ckit
 
-// FIXME: Test on Windows.
 when ODIN_OS == .Windows {
 	foreign import lib {
 		"./lib/ckit.lib",

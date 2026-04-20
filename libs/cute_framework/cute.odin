@@ -1,9 +1,8 @@
 package cute_framework
 
-// FIXME: Test on Windows.
 when ODIN_OS == .Windows {
 	@(export) foreign import lib {
-		"./lib/libcute.dll",
+		"./lib/cute.lib",
 	}
 } else {
 	@(export) foreign import lib {

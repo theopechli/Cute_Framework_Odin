@@ -143,7 +143,7 @@
 #define afree(a)      do { CK_ACANARY(a); if (a && !CK_AHDR(a)->is_static) CK_FREE(CK_AHDR(a)); (a) = NULL; } while (0)
 
 // Check if array is a valid dynamic array.
-#define avalid(a)  ((a) && CK_AHDR(a)->cookie.val == CK_ACOOKIE.val)
+#define avalid(a)  ((a) && CK_AHDR(a)->cookie.val == CK_ACOOKIE)
 
 //--------------------------------------------------------------------------------------------------
 // Dynamic strings (built on dynamic arrays).
@@ -505,7 +505,7 @@
 #define sintern_range(start, end) ck_sintern_range(start, end)
 
 // sivalid: True if s is an interned string (from sintern).
-#define sivalid(s) (((CK_UniqueString*)(s) - 1)->cookie.val == CK_INTERN_COOKIE.val)
+#define sivalid(s) (((CK_UniqueString*)(s) - 1)->cookie.val == CK_INTERN_COOKIE)
 
 // silen: Length of an interned string (constant-time).
 #define silen(s)   (((CK_UniqueString*)(s) - 1)->len)
@@ -523,16 +523,10 @@ typedef union CK_Cookie
 	char c[4];
 } CK_Cookie;
 
-// Helper to create cookies (works in both C and C++).
-static inline CK_Cookie ck_cookie(char a, char b, char c, char d)
-{
-	CK_Cookie ck;
-	ck.c[0] = a;
-	ck.c[1] = b;
-	ck.c[2] = c;
-	ck.c[3] = d;
-	return ck;
-}
+// Compile-time cookie value (uint32_t literal, no function call).
+#define CK_COOKIE_VAL(a, b, c, d) \
+	((uint32_t)(unsigned char)(a) | ((uint32_t)(unsigned char)(b) << 8) | \
+	 ((uint32_t)(unsigned char)(c) << 16) | ((uint32_t)(unsigned char)(d) << 24))
 
 // Portable case-insensitive string compare.
 #ifdef _WIN32
@@ -542,7 +536,7 @@ static inline CK_Cookie ck_cookie(char a, char b, char c, char d)
 #endif
 
 // Intern structure for validation and length access.
-#define CK_INTERN_COOKIE ck_cookie('I','N','T','R')
+#define CK_INTERN_COOKIE CK_COOKIE_VAL('I','N','T','R')
 typedef struct CK_UniqueString
 {
 	CK_Cookie cookie;
@@ -562,8 +556,8 @@ typedef struct CK_ArrayHeader
 } CK_ArrayHeader;
 
 #define CK_AHDR(a)    ((CK_ArrayHeader*)(a) - 1)
-#define CK_ACOOKIE    ck_cookie('A','R','R','Y')
-#define CK_ACANARY(a) ((a) ? assert(CK_AHDR(a)->cookie.val == CK_ACOOKIE.val) : (void)0)
+#define CK_ACOOKIE    CK_COOKIE_VAL('A','R','R','Y')
+#define CK_ACANARY(a) ((a) ? assert(CK_AHDR(a)->cookie.val == CK_ACOOKIE) : (void)0)
 
 #ifndef CK_API
 #define CK_API
@@ -574,6 +568,7 @@ extern "C" {
 #endif
 
 CK_API void sintern_nuke();
+CK_API int ck_sintern_gen();
 
 CK_API void* ck_agrow(const void* a, int new_size, size_t element_size);
 CK_API void* ck_astatic(const void* a, int buffer_size, size_t element_size);
@@ -588,7 +583,7 @@ typedef struct CK_MapSlot
 } CK_MapSlot;
 
 // Safety cookie for map validation.
-#define CK_MAP_COOKIE ck_cookie('M','A','P','!')
+#define CK_MAP_COOKIE CK_COOKIE_VAL('M','A','P','!')
 
 // Compute pointers to arrays within the single allocation.
 // items: right after header (header is 24 bytes, 8-byte aligned)
@@ -609,7 +604,7 @@ typedef struct CK_MapSlot
 #define CK_MHDR(m) ((m) ? (CK_MapHeader*)((char*)(m) - sizeof(CK_MapHeader)) : NULL)
 
 // Internal: Validate map cookie (catches use-after-free, etc).
-#define map_validate(m) ((void)(!(m) || (assert(CK_MHDR(m)->cookie.val == CK_MAP_COOKIE.val), 1)))
+#define map_validate(m) ((void)(!(m) || (assert(CK_MHDR(m)->cookie.val == CK_MAP_COOKIE), 1)))
 
 // Map header stored just before the values array.
 // All arrays (items, keys, islot, slots) are in a single allocation following the header.
@@ -691,13 +686,9 @@ CK_API char* ck_spnorm(const char* path);
 CK_API const uint16_t* ck_decode_UTF16(const uint16_t* s, int* codepoint);
 
 // Intern implementation.
+CK_API const char* ck_sintern(const char* s);
 CK_API const char* ck_sintern_range(const char* start, const char* end);
 CK_API uint64_t ck_hash_fnv1a(const void* ptr, size_t sz);
-
-static inline const char* ck_sintern(const char* s)
-{
-	return ck_sintern_range(s, s + strlen(s));
-}
 
 #ifdef __cplusplus
 } // extern "C"
@@ -742,12 +733,12 @@ void* ck_agrow(const void* a, int new_size, size_t element_size)
 			hdr = (CK_ArrayHeader*)CK_ALLOC(total_size);
 			memcpy(hdr + 1, a, (size_t)asize(a) * element_size);
 			hdr->size = asize(a);
-			hdr->cookie = CK_ACOOKIE;
+			hdr->cookie.val = CK_ACOOKIE;
 		}
 	} else {
 		hdr = (CK_ArrayHeader*)CK_ALLOC(total_size);
 		hdr->size = 0;
-		hdr->cookie = CK_ACOOKIE;
+		hdr->cookie.val = CK_ACOOKIE;
 	}
 	hdr->capacity = new_capacity;
 	hdr->is_static = 0;
@@ -759,7 +750,7 @@ void* ck_astatic(const void* a, int buffer_size, size_t element_size)
 {
 	CK_ArrayHeader* hdr = (CK_ArrayHeader*)a;
 	hdr->size = 0;
-	hdr->cookie = CK_ACOOKIE;
+	hdr->cookie.val = CK_ACOOKIE;
 	if (sizeof(CK_ArrayHeader) <= element_size) {
 		hdr->capacity = buffer_size / (int)element_size - 1;
 	} else {
@@ -906,15 +897,17 @@ char* ck_svfmt_append(char* s, const char* fmt, va_list args)
 int ck_sprefix(const char* s, const char* prefix)
 {
 	if (!s) return 0;
+	int s_len = (int)strlen(s);
 	int prefix_len = (int)strlen(prefix);
-	return slen(s) >= prefix_len && !memcmp(s, prefix, (size_t)prefix_len);
+	return s_len >= prefix_len && !memcmp(s, prefix, (size_t)prefix_len);
 }
 
 int ck_ssuffix(const char* s, const char* suffix)
 {
 	if (!s) return 0;
+	int s_len = (int)strlen(s);
 	int suffix_len = (int)strlen(suffix);
-	return slen(s) >= suffix_len && !memcmp(s + slen(s) - suffix_len, suffix, (size_t)suffix_len);
+	return s_len >= suffix_len && !memcmp(s + s_len - suffix_len, suffix, (size_t)suffix_len);
 }
 
 void ck_stoupper(char* s)
@@ -1542,7 +1535,7 @@ CK_MapHeader* ck_map_ensure_capacity(void** m_ptr, int want_items, int val_size)
 	memset(new_hdr, 0, new_size);
 
 	// Initialize header.
-	new_hdr->cookie = CK_MAP_COOKIE;
+	new_hdr->cookie.val = CK_MAP_COOKIE;
 	new_hdr->val_size = val_size;
 	new_hdr->size = old_size;
 	new_hdr->capacity = new_item_cap;
@@ -1809,6 +1802,9 @@ typedef struct CK_InternTable
 } CK_InternTable;
 
 static CK_ATOMIC(CK_InternTable*) g_intern_table;
+static int g_sintern_gen;
+
+int ck_sintern_gen() { return g_sintern_gen; }
 
 static CK_InternTable* ck_sintern_get_table()
 {
@@ -1840,6 +1836,34 @@ static void ck_sintern_unlock(CK_InternTable* table)
 	ck_atomic_store(&table->lock, 0);
 }
 
+const char* ck_sintern(const char* s)
+{
+	// Direct-mapped pointer cache. String literals have stable addresses,
+	// so the same call site always hits after the first miss. The strcmp
+	// handles reused buffers (e.g. sprintf into the same char[]). The
+	// generation counter invalidates the cache after sintern_nuke().
+	struct ck_sintern_cache_entry { const char* key; const char* val; };
+#ifdef __cplusplus
+	static thread_local struct ck_sintern_cache_entry ck_sintern_cache[64];
+	static thread_local int ck_sintern_cache_gen;
+#else
+	static _Thread_local struct ck_sintern_cache_entry ck_sintern_cache[64];
+	static _Thread_local int ck_sintern_cache_gen;
+#endif
+	int gen = ck_sintern_gen();
+	if (ck_sintern_cache_gen != gen) {
+		memset(ck_sintern_cache, 0, sizeof(ck_sintern_cache));
+		ck_sintern_cache_gen = gen;
+	}
+	unsigned ck_idx = (unsigned)((uintptr_t)s >> 3) & 63;
+	if (ck_sintern_cache[ck_idx].key == s && strcmp(ck_sintern_cache[ck_idx].val, s) == 0)
+		return ck_sintern_cache[ck_idx].val;
+	const char* result = ck_sintern_range(s, s + strlen(s));
+	ck_sintern_cache[ck_idx].key = s;
+	ck_sintern_cache[ck_idx].val = result;
+	return result;
+}
+
 const char* ck_sintern_range(const char* start, const char* end)
 {
 	CK_InternTable* table = ck_sintern_get_table();
@@ -1858,7 +1882,7 @@ const char* ck_sintern_range(const char* start, const char* end)
 
 	size_t bytes = sizeof(CK_UniqueString) + len + 1;
 	CK_UniqueString* node = (CK_UniqueString*)CK_ALLOC(bytes);
-	node->cookie = CK_INTERN_COOKIE;
+	node->cookie.val = CK_INTERN_COOKIE;
 	node->len = (int)len;
 	node->next = head;
 	node->str = (char*)(node + 1);
@@ -1872,6 +1896,7 @@ const char* ck_sintern_range(const char* start, const char* end)
 
 void sintern_nuke()
 {
+	g_sintern_gen++;
 	CK_InternTable* table = ck_atomic_load(&g_intern_table);
 	if (!table) return;
 

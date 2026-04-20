@@ -37,7 +37,7 @@ cd /d "%PROJECT_PATH%"
 REM ckit
 set "LIBS_CKIT_PATH=%LIBS_PATH%\ckit"
 
-cd /d "%LIBS_CKIT_PATH%"
+cd /d "%LIBS_CKIT_PATH%\src"
 .\build.bat
 
 cd /d "%PROJECT_PATH%"

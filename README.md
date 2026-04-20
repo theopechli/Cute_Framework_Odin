@@ -24,6 +24,11 @@ If you have cloned the repository without its submodules, then go to the root of
 git submodule update --init --recursive
 ```
 
+## Prerequisites:
+
+- CMake
+- Python
+
 ## Build
 
 Execute any of the following commands from the root of the repository.
