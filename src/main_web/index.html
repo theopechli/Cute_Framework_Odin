@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en-us">
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+		<title>Game</title>
+		<link rel="stylesheet" href="./main.css" />
+	</head>
+	<body>
+		<div id="container">
+			<div id="wrapper">
+				<div id="overlay-wrapper">
+					<div id="overlay">
+						<div id="logo"></div>
+						<div id="title">Game</div>
+						<div id="status">Loading...</div>
+						<progress id="progress-bar" max="100"></progress>
+					</div>
+				</div>
+				<canvas id="canvas" tabindex=-1></canvas>
+			</div>
+		</div>
+
+		<script src="./odin.js"></script>
+		<script type="text/javascript" src="./main.js"></script>
+		<script>
+			const odinMemoryInterface = new odin.WasmMemoryInterface();
+			odinMemoryInterface.setIntSize(4);
+			const odinImports = odin.setupDefaultImports(odinMemoryInterface);
+
+			const cfInstantiateWasm = Module.instantiateWasm;
+			Module.instantiateWasm = (imports, successCallback) =>
+				cfInstantiateWasm.call(Module, { ...odinImports, ...imports }, (instance) => {
+					const e = instance.exports;
+					odinMemoryInterface.setExports(e);
+					odinMemoryInterface.setMemory(e.memory);
+					return successCallback(instance);
+				});
+
+			Module.onRuntimeInitialized = () => {
+				const e = wasmExports;
+				e._start();
+				e.main_start();
+			};
+		</script>
+		{{{ SCRIPT }}}
+	</body>
+</html>

@@ -1,0 +1,3008 @@
+/*
+	Cute Framework
+	Copyright (C) 2024 Randy Gaul https://randygaul.github.io/
+
+	This software is dual-licensed with zlib or Unlicense, check LICENSE.txt for more info
+*/
+
+#ifndef CF_GRAPHICS_H
+#define CF_GRAPHICS_H
+
+#include "cute_defines.h"
+#include "cute_result.h"
+#include "cute_color.h"
+#include "cute_c_runtime.h"
+#include "cute_shader_bytecode.h"
+
+//--------------------------------------------------------------------------------------------------
+// C API
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+/**
+ * This header wraps low-level 3D rendering APIs. You're probably looking for other headers in Cute
+ * Framework, not this one. This header is for implementing your own custom rendering stuff, and is
+ * intended only for advanced users.
+ *
+ * If you want to draw sprites, lines/shapes, or text, see: cute_draw.h
+ *
+ *
+ * The basic flow of rendering a frame looks something like this:
+ *
+ *     for each canvas {
+ *         cf_apply_canvas(canvas);
+ *         for each mesh {
+ *             cf_mesh_update_vertex_data(mesh, ...);
+ *             cf_apply_mesh(mesh);
+ *             for each material {
+ *                 cf_material_set_uniform_vs(material, ...);
+ *                 cf_material_set_uniform_fs(material, ...);
+ *                 for each shader {
+ *                     cf_apply_shader(shader, material);
+ *                     cf_draw_elements(...);
+ *                 }
+ *             }
+ *         }
+ *     }
+ */
+
+/**
+ * @struct   CF_Texture
+ * @category graphics
+ * @brief    An opaque handle representing a texture.
+ * @remarks  A texture is a buffer of data sent to the GPU for random access. Usually textures are used to store image data.
+ * @related  CF_Texture CF_Canvas CF_Material CF_Shader CF_TextureParams cf_texture_defaults cf_make_texture cf_destroy_texture cf_texture_update cf_material_set_texture_vs cf_material_set_texture_fs
+ */
+typedef struct CF_Texture { uint64_t id; } CF_Texture;
+// @end
+
+/**
+ * @struct   CF_Sampler
+ * @category graphics
+ * @brief    A standalone sampler: how a texture is read, decoupled from the texture itself.
+ * @remarks  Every texture bakes one sampler from its `CF_TextureParams` -- fine until one
+ *           texture needs two read styles (a depth map read raw for a blocker search AND
+ *           through hardware compare for PCF; one image sampled NEAREST in one pass and
+ *           LINEAR in another). A standalone sampler overrides the baked one at binding
+ *           time via `cf_material_set_texture_vs_sampler` / `_fs_sampler`.
+ * @related  CF_SamplerParams cf_make_sampler cf_destroy_sampler cf_material_set_texture_fs_sampler
+ */
+typedef struct CF_Sampler { uint64_t id; } CF_Sampler;
+// @end
+
+/**
+ * @struct   CF_Canvas
+ * @category graphics
+ * @brief    An opaque handle representing a canvas.
+ * @related  CF_Texture CF_Canvas CF_Material CF_Shader CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas
+ */
+typedef struct CF_Canvas { uint64_t id; } CF_Canvas;
+// @end
+
+/**
+ * @struct   CF_Readback
+ * @category graphics
+ * @brief    An opaque handle representing an async GPU readback operation.
+ * @example > Rendering to a canvas with cf_render_to, then reading back pixel data.
+ *     // Create a canvas.
+ *     CF_Canvas canvas = cf_make_canvas(cf_canvas_defaults(256, 256));
+ *
+ *     // Queue up draw calls and flush them to the canvas.
+ *     cf_draw_sprite(&my_sprite);
+ *     cf_render_to(canvas, true);
+ *
+ *     // Initiate async readback (ends the active render pass automatically).
+ *     // Save this `CF_Readback` for later! This is an *async* object.
+ *     CF_Readback readback = cf_canvas_readback(canvas);
+ *
+ *     // ...Elsewhere, and some # of frames later...
+ *     // Poll each frame until the GPU finishes the download.
+ *     if (cf_readback_ready(readback)) {
+ *         int size = cf_readback_size(readback);
+ *         void* pixels = cf_alloc(size);
+ *         cf_readback_data(readback, pixels, size);
+ *         // pixels now holds RGBA8 data (256 * 256 * 4 bytes).
+ *         // ... use the pixel data ...
+ *         cf_free(pixels);
+ *         cf_destroy_readback(readback);
+ *     }
+ * @remarks  A readback initiates an async GPU-to-CPU copy of pixel data from a canvas.
+ *           Poll with `cf_readback_ready` and retrieve data with `cf_readback_data`.
+ *           The pixel format matches the canvas target format (typically RGBA8, 4 bytes per pixel).
+ *           The GLES backend can only read what `glReadPixels` accepts: four-channel 8-bit
+ *           normalized, float and integer targets on every driver, other layouts (single-channel,
+ *           half-float, ...) only where the driver's implementation-defined read pair matches
+ *           the target. A target it cannot read returns a zero'd handle; BGRA targets come back
+ *           in RGBA byte order.
+ *           WebGPU (desktop and web) reads back asynchronously, like SDL_GPU.
+ *           The GLES backend (WebGL2 on the web) implements readback
+ *           synchronously: the copy has already happened by the time `cf_canvas_readback` returns and
+ *           `cf_readback_ready` is immediately true. The API shape is the same either way, so polling
+ *           code stays portable, but expect a pipeline stall there rather than an async copy.
+ * @related  CF_Canvas cf_canvas_readback cf_readback_ready cf_readback_data cf_readback_size cf_destroy_readback
+ */
+typedef struct CF_Readback { uint64_t id; } CF_Readback;
+// @end
+
+/**
+ * @struct   CF_Mesh
+ * @category graphics
+ * @brief    An opaque handle representing a mesh.
+ * @remarks  A mesh is a container of triangles, along with optional indices. After a mesh
+ *           is created the layout of the vertices in memory must be described. We use an array of
+ *           `CF_VertexAttribute` to define how the GPU will interpret the vertices we send it.
+ * @related  CF_Texture CF_Canvas CF_Material CF_Shader cf_make_mesh cf_destroy_mesh cf_mesh_update_vertex_data cf_apply_mesh
+ */
+typedef struct CF_Mesh { uint64_t id; } CF_Mesh;
+// @end
+
+/**
+ * @struct   CF_Material
+ * @category graphics
+ * @brief    An opaque handle representing a material.
+ * @remarks  Materials store inputs to shaders. They hold uniforms and textures. Uniforms are like global
+ *           variables inside of a shader stage (either the vertex or fragment shaders). For efficiency, all
+ *           uniforms are packed into a "uniform buffer", a contiguous chunk of memory on the GPU. We must
+ *           specify which uniform buffer each uniform belongs to.
+ * @related  CF_Texture CF_Canvas CF_Material CF_Shader cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs cf_apply_shader
+ */
+typedef struct CF_Material { uint64_t id; } CF_Material;
+// @end
+
+/**
+ * @struct   CF_Shader
+ * @category graphics
+ * @brief    An opaque handle representing a shader.
+ * @remarks  A shader is a small program that runs on the GPU. They come in the form of vertex and fragment shaders.
+ * @related  CF_Texture CF_Canvas CF_Material CF_Shader cf_make_shader cf_destroy_shader cf_apply_shader
+ */
+typedef struct CF_Shader { uint64_t id; } CF_Shader;
+// @end
+
+/**
+ * @struct   CF_ComputeShader
+ * @category graphics
+ * @brief    An opaque handle representing a compute shader.
+ * @remarks  A compute shader is a program that runs on the GPU outside the graphics pipeline.
+ *           On GLES3/WebGL2 compute is emulated with draws, for a restricted class of shaders. See
+ *           `cf_make_compute_shader`.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader cf_dispatch_compute
+ */
+typedef struct CF_ComputeShader { uint64_t id; } CF_ComputeShader;
+// @end
+
+/**
+ * @struct   CF_StorageBuffer
+ * @category graphics
+ * @brief    An opaque handle representing a GPU storage buffer.
+ * @remarks  Storage buffers are GPU-accessible buffers used with compute and graphics shaders.
+ *           On GLES3/WebGL2 they live in textures, readable and writable by emulated compute shaders.
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_make_storage_buffer cf_destroy_storage_buffer cf_update_storage_buffer
+ */
+typedef struct CF_StorageBuffer { uint64_t id; } CF_StorageBuffer;
+// @end
+
+//--------------------------------------------------------------------------------------------------
+// Device queries.
+
+/**
+ * @enum     CF_BackendType
+ * @category graphics
+ * @brief    The various supported graphics backends.
+ * @related  CF_BackendType cf_backend_type_to_string cf_query_backend
+ */
+#define CF_BACKEND_TYPE_DEFS \
+	/* @entry Invalid backend type (uninitialized or failed to create). */           \
+	CF_ENUM(BACKEND_TYPE_INVALID, -1)                                              \
+	/* @entry Vulkan backend. */                                                   \
+	CF_ENUM(BACKEND_TYPE_VULKAN, 0)                                                \
+	/* @entry DirectX 11 backend (legacy support). */                              \
+	CF_ENUM(BACKEND_TYPE_D3D11,  1)                                                \
+	/* @entry DirectX 12 backend. */                                               \
+	CF_ENUM(BACKEND_TYPE_D3D12,  2)                                                \
+	/* @entry Metal backend. */                                                    \
+	CF_ENUM(BACKEND_TYPE_METAL,  3)                                                \
+	/* @entry A "secret" backend for platforms under non-disclosure agreement. */  \
+	CF_ENUM(BACKEND_TYPE_PRIVATE,  4)                                              \
+	/* @entry OpenGL ES 3 backend. */                                              \
+	CF_ENUM(BACKEND_TYPE_GLES3,  5)                                                \
+	/* @entry WebGPU backend. */                                                   \
+	CF_ENUM(BACKEND_TYPE_WEBGPU, 6)                                                \
+	/* @end */
+
+typedef enum CF_BackendType
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_BACKEND_TYPE_DEFS
+	#undef CF_ENUM
+} CF_BackendType;
+
+/**
+ * @function cf_backend_type_to_string
+ * @category graphics
+ * @brief    Returns a `CF_BackendType` converted to a string.
+ * @related  CF_BackendType cf_backend_type_to_string cf_query_backend
+ */
+CF_INLINE const char* cf_backend_type_to_string(CF_BackendType type) {
+	switch (type) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_BACKEND_TYPE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @function cf_query_backend
+ * @category graphics
+ * @brief    Returns which `CF_BackendType` is currently active.
+ * @related  CF_BackendType cf_backend_type_to_string cf_query_backend
+ */
+CF_API CF_BackendType CF_CALL cf_query_backend(void);
+
+/**
+ * @enum     CF_PixelFormatOp
+ * @category graphics
+ * @brief    The various supported operations a pixel format can perform.
+ * @remarks  Not all types are supported on each backend. Be sure to check with `cf_query_pixel_format` if a particular pixel format
+ *           is available for your use-case.
+ * @related  CF_PixelFormat cf_pixel_format_op_to_string CF_PixelFormatOp
+ */
+#define CF_PIXELFORMAT_OP_DEFS \
+	/* @entry Nearest-neighbor filtering. Good for pixel art. */          \
+	CF_ENUM(PIXELFORMAT_OP_NEAREST_FILTER,  0)                            \
+	/* @entry Bilinear filtering, good general purpose option. */         \
+	CF_ENUM(PIXELFORMAT_OP_BILINEAR_FILTER, 1)                            \
+	/* @entry Used to render to a texture. */                             \
+	CF_ENUM(PIXELFORMAT_OP_RENDER_TARGET,   2)                            \
+	/* @entry Performs hardware-accelerated alpha-blending. */            \
+	CF_ENUM(PIXELFORMAT_OP_ALPHA_BLENDING,  3)                            \
+	/* @entry Performs hardware-accelerated multi-sample antialiasing. */ \
+	CF_ENUM(PIXELFORMAT_OP_MSAA,            4)                            \
+	/* @entry Performs hardware-accelerated depth-culling. */             \
+	CF_ENUM(PIXELFORMAT_OP_DEPTH,           5)                            \
+	/* @end */
+
+typedef enum CF_PixelFormatOp
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_PIXELFORMAT_OP_DEFS
+	#undef CF_ENUM
+} CF_PixelFormatOp;
+
+/**
+ * @function cf_pixel_format_op_to_string
+ * @category graphics
+ * @brief    Returns a `CF_PixelFormatOp` converted to a C string.
+ * @related  CF_PixelFormat cf_pixel_format_op_to_string CF_PixelFormatOp
+ */
+CF_INLINE const char* cf_pixel_format_op_to_string(CF_PixelFormatOp op) {
+switch (op) {
+#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+CF_PIXELFORMAT_OP_DEFS
+#undef CF_ENUM
+default: return NULL;
+}
+}
+
+/**
+ * @function cf_query_pixel_format
+ * @category graphics
+ * @brief    Queries whether a pixel format supports a specific operation on the current backend.
+ * @param    format  The `CF_PixelFormat` to query.
+ * @param    op      The operation to test, see `CF_PixelFormatOp`.
+ * @return   True if the operation is supported for the format, otherwise false.
+ * @related  CF_PixelFormat CF_PixelFormatOp cf_texture_supports_format
+ */
+CF_API bool CF_CALL cf_query_pixel_format(CF_PixelFormat format, CF_PixelFormatOp op);
+
+//--------------------------------------------------------------------------------------------------
+// Texture.
+
+/**
+ * @enum     CF_TextureUsageBits
+ * @category graphics
+ * @brief    Bitmask flags that indicate the intended usage of a texture.
+ * @remarks  These flags define how a texture will be utilized in graphics and compute pipelines.
+ *           Multiple flags can be combined using a bitwise OR operation.
+ * @related  CF_TextureUsageBits
+ */
+#define CF_TEXTURE_USAGE_DEFS \
+	/* @entry The texture will be used as a sampler in shaders. */                    \
+	CF_ENUM(TEXTURE_USAGE_SAMPLER_BIT,               0x00000001)                      \
+	/* @entry The texture will be used as a color render target. */                   \
+	CF_ENUM(TEXTURE_USAGE_COLOR_TARGET_BIT,          0x00000002)                      \
+	/* @entry The texture will be used as a depth or stencil render target. */        \
+	CF_ENUM(TEXTURE_USAGE_DEPTH_STENCIL_TARGET_BIT,  0x00000004)                      \
+	/* @entry The texture will be used as read-only storage in graphics pipelines. */ \
+	CF_ENUM(TEXTURE_USAGE_GRAPHICS_STORAGE_READ_BIT, 0x00000008)                      \
+	/* @entry The texture will be used as read-only storage in compute pipelines. */  \
+	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_READ_BIT,  0x00000010)                      \
+	/* @entry The texture will be used as writeable storage in compute pipelines. */  \
+	CF_ENUM(TEXTURE_USAGE_COMPUTE_STORAGE_WRITE_BIT, 0x00000020)                      \
+	/* @end */
+
+typedef uint32_t CF_TextureUsageFlags;
+
+typedef enum CF_TextureUsageBits
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_TEXTURE_USAGE_DEFS
+	#undef CF_ENUM
+} CF_TextureUsageBits;
+
+/**
+ * @function cf_texture_supports_format
+ * @category graphics
+ * @brief    Checks whether the device supports a pixel format under specific texture usage.
+ * @param    format   The pixel format to check.
+ * @param    usage    The intended `CF_TextureUsageBits`.
+ * @remarks  The usage-precise sibling of `cf_query_pixel_format` -- e.g. probe
+ *           `CF_TEXTURE_USAGE_DEPTH_STENCIL_TARGET_BIT` support for a depth format, the same
+ *           check `cf_canvas_defaults` uses to negotiate its depth format.
+ * @related  CF_PixelFormat CF_TextureUsageBits cf_query_pixel_format
+ */
+CF_API bool CF_CALL cf_texture_supports_format(CF_PixelFormat format, CF_TextureUsageBits usage);
+
+/**
+ * @enum     CF_Filter
+ * @category graphics
+ * @brief    Filtering options for how to access `CF_Texture` data on the GPU.
+ * @related  CF_Filter cf_filter_to_string CF_TextureParams
+ */
+#define CF_FILTER_DEFS \
+	/* @entry Nearest-neighbor filtering. Good for pixel art. */             \
+	CF_ENUM(FILTER_NEAREST, 0)                                               \
+	/* @entry Linear (bilinear) filtering. A good general purpose option. */ \
+	CF_ENUM(FILTER_LINEAR,  1)                                               \
+	/* @end */
+
+typedef enum CF_Filter
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_FILTER_DEFS
+	#undef CF_ENUM
+} CF_Filter;
+
+/**
+ * @function cf_filter_to_string
+ * @category graphics
+ * @brief    Returns a `CF_Filter` converted to a C string.
+ * @related  CF_Filter cf_filter_to_string CF_TextureParams
+ */
+CF_INLINE const char* cf_filter_to_string(CF_Filter filter) {
+	switch (filter) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_FILTER_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_MipFilter
+ * @category graphics
+ * @brief    Describes how the GPU samples between mipmap levels.
+ * @related  CF_MipFilter cf_mip_filter_to_string CF_TextureParams
+ */
+#define CF_MIP_FILTER_DEFS                                                  \
+	/* @entry Samples the nearest mip level without blending. */            \
+	CF_ENUM(MIP_FILTER_NEAREST, 0)                                          \
+	/* @entry Linearly blends between mip levels for smooth transitions. */ \
+	CF_ENUM(MIP_FILTER_LINEAR, 1)                                           \
+	/* @end */
+
+typedef enum CF_MipFilter
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_MIP_FILTER_DEFS
+	#undef CF_ENUM
+} CF_MipFilter;
+
+/**
+ * @function cf_mip_filter_to_string
+ * @category graphics
+ * @brief    Returns a `CF_MipFilter` converted to a C string.
+ * @related  CF_MipFilter cf_mip_filter_to_string CF_TextureParams
+ */
+CF_INLINE const char* cf_mip_filter_to_string(CF_MipFilter filter) {
+	switch (filter) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_MIP_FILTER_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_WrapMode
+ * @category graphics
+ * @brief    Wrap modes to define behavior when addressing a texture beyond the [0,1] range.
+ * @related  CF_WrapMode cf_wrap_mode_string CF_TextureParams
+ */
+#define CF_WRAP_MODE_DEFS \
+	/* @entry Repeats the image. */                                            \
+	CF_ENUM(WRAP_MODE_REPEAT,          0)                                      \
+	/* @entry Clamps a UV coordinate to the nearest edge pixel. */             \
+	CF_ENUM(WRAP_MODE_CLAMP_TO_EDGE,   1)                                      \
+	/* @entry The same as `CF_WRAP_MODE_REPEAT` but mirrors back and forth. */ \
+	CF_ENUM(WRAP_MODE_MIRRORED_REPEAT, 2)                                      \
+	/* @end */
+
+typedef enum CF_WrapMode
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_WRAP_MODE_DEFS
+	#undef CF_ENUM
+} CF_WrapMode;
+
+/**
+ * @function cf_wrap_mode_string
+ * @category graphics
+ * @brief    Returns a `CF_WrapMode` converted to a C string.
+ * @related  CF_WrapMode cf_wrap_mode_string CF_TextureParams
+ */
+CF_INLINE const char* cf_wrap_mode_string(CF_WrapMode mode) {
+	switch (mode) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_WRAP_MODE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_CompareFunction
+ * @category graphics
+ * @brief    Compare operations available for depth/stencil.
+ * @related  CF_CompareFunction cf_compare_function_string CF_StencilOp CF_StencilFunction
+ */
+#define CF_COMPARE_FUNCTION_DEFS \
+	/* @entry Always perform the operation. */         \
+	CF_ENUM(COMPARE_FUNCTION_ALWAYS,                0) \
+	/* @entry Never perform the operation. */          \
+	CF_ENUM(COMPARE_FUNCTION_NEVER,                 1) \
+	/* @entry < */                                     \
+	CF_ENUM(COMPARE_FUNCTION_LESS_THAN,             2) \
+	/* @entry == */                                    \
+	CF_ENUM(COMPARE_FUNCTION_EQUAL,                 3) \
+	/* @entry != */                                    \
+	CF_ENUM(COMPARE_FUNCTION_NOT_EQUAL,             4) \
+	/* @entry <= */                                    \
+	CF_ENUM(COMPARE_FUNCTION_LESS_THAN_OR_EQUAL,    5) \
+	/* @entry > */                                     \
+	CF_ENUM(COMPARE_FUNCTION_GREATER_THAN,          6) \
+	/* @entry >= */                                    \
+	CF_ENUM(COMPARE_FUNCTION_GREATER_THAN_OR_EQUAL, 7) \
+	/* @end */
+
+typedef enum CF_CompareFunction
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_COMPARE_FUNCTION_DEFS
+	#undef CF_ENUM
+} CF_CompareFunction;
+
+/**
+ * @function cf_compare_function_string
+ * @category graphics
+ * @brief    Returns a `CF_CompareFunction` converted to a C string.
+ * @related  CF_CompareFunction cf_compare_function_string CF_StencilOp CF_StencilFunction
+ */
+CF_INLINE const char* cf_compare_function_string(CF_CompareFunction compare) {
+	switch (compare) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_COMPARE_FUNCTION_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @struct   CF_SamplerParams
+ * @category graphics
+ * @brief    Parameters for creating a standalone `CF_Sampler`.
+ * @related  CF_Sampler cf_sampler_defaults cf_make_sampler
+ */
+typedef struct CF_SamplerParams
+{
+	/* @member Filtering for minification and magnification. See `CF_Filter`. */
+	CF_Filter filter;
+
+	/* @member Filtering between mip levels. See `CF_MipFilter`. */
+	CF_MipFilter mip_filter;
+
+	/* @member Addressing for u coordinates outside [0, 1). See `CF_WrapMode`. */
+	CF_WrapMode wrap_u;
+
+	/* @member Addressing for v coordinates. */
+	CF_WrapMode wrap_v;
+
+	/* @member Addressing for w coordinates (3d textures). */
+	CF_WrapMode wrap_w;
+
+	/* @member Bias added to the computed mip LOD. */
+	float mip_lod_bias;
+
+	/* @member Anisotropy clamp; values > 1 enable anisotropic filtering. */
+	int max_anisotropy;
+
+	/* @member Clamps the minimum computed LOD. */
+	float min_lod;
+
+	/* @member Clamps the maximum computed LOD. Defaults large (no clamp). */
+	float max_lod;
+
+	/* @member True to fetch through hardware comparison (shadow samplers). */
+	bool compare_enable;
+
+	/* @member The comparison used when `compare_enable` is true. */
+	CF_CompareFunction compare_function;
+} CF_SamplerParams;
+// @end
+
+/**
+ * @function cf_sampler_defaults
+ * @category graphics
+ * @brief    Returns sensible defaults for `CF_SamplerParams`: linear filtering, repeat wrap.
+ * @related  CF_Sampler CF_SamplerParams cf_make_sampler
+ */
+CF_INLINE CF_SamplerParams cf_sampler_defaults(void)
+{
+	CF_SamplerParams params;
+	params.filter = CF_FILTER_LINEAR;
+	params.mip_filter = CF_MIP_FILTER_LINEAR;
+	params.wrap_u = CF_WRAP_MODE_REPEAT;
+	params.wrap_v = CF_WRAP_MODE_REPEAT;
+	params.wrap_w = CF_WRAP_MODE_REPEAT;
+	params.mip_lod_bias = 0;
+	params.max_anisotropy = 1;
+	params.min_lod = 0;
+	params.max_lod = 1000.0f;
+	params.compare_enable = false;
+	params.compare_function = CF_COMPARE_FUNCTION_ALWAYS;
+	return params;
+}
+
+/**
+ * @function cf_make_sampler
+ * @category graphics
+ * @brief    Creates a standalone sampler.
+ * @related  CF_Sampler CF_SamplerParams cf_sampler_defaults cf_destroy_sampler cf_material_set_texture_fs_sampler
+ */
+CF_API CF_Sampler CF_CALL cf_make_sampler(CF_SamplerParams params);
+
+/**
+ * @function cf_destroy_sampler
+ * @category graphics
+ * @brief    Destroys a sampler made by `cf_make_sampler`.
+ * @remarks  Destroy only after the last frame that binds it has finished.
+ * @related  CF_Sampler cf_make_sampler
+ */
+CF_API void CF_CALL cf_destroy_sampler(CF_Sampler sampler);
+
+
+/**
+ * @struct   CF_TextureParams
+ * @category graphics
+ * @brief    A collection of parameters to create a `CF_Texture` with `cf_make_texture`.
+ * @remarks  You may get a set of good default values by calling `cf_texture_defaults`.
+ * @related  CF_TextureParams cf_texture_defaults CF_Texture cf_make_texture cf_destroy_texture cf_texture_update
+ */
+typedef struct CF_TextureParams
+{
+	/* @member The pixel format for this texture's data. See `CF_PixelFormat`. */
+	CF_PixelFormat pixel_format;
+
+	/* @member The memory access pattern for this texture on the GPU. See `CF_TextureUsageBits`. */
+	CF_TextureUsageFlags usage;
+
+	/* @member The filtering operation to use when fetching data out of the texture, on the GPU. See `CF_Filter`. */
+	CF_Filter filter;
+
+	/* @member The texture wrapping behavior when addressing beyond [0,1) for the u-coordinate. See `CF_WrapMode`. */
+	CF_WrapMode wrap_u;
+
+	/* @member The texture wrapping behavior when addressing beyond [0,1) for the v-coordinate. See `CF_WrapMode`. */
+	CF_WrapMode wrap_v;
+
+	/* @member The filtering operation to use when fetching data out of a mipmap, on the GPU. See `CF_MipFilter`. */
+	CF_MipFilter mip_filter;
+
+	/* @member Number of elements (usually pixels) along the width of the texture. */
+	int width;
+
+	/* @member Number of elements (usually pixels) along the height of the texture. */
+	int height;
+
+	/* @member 0 = auto compute from dimensions if `allocate_mipmaps` is true, else specify an explicit number. */
+	int mip_count;
+
+	/* @member Defaulted to false, true to allocate a full mipmap chain for the texture. */
+	bool allocate_mipmaps;
+
+	/* @member Mipmap level bias; positive = blurrier, negative = sharper. */
+	float mip_lod_bias;
+
+	/* @member Maximum anisotropy level; 1.0 disables anisotropic filtering. */
+	float max_anisotropy;
+
+	/* @member Set this to true if you plan to update the texture contents each frame. */
+	bool stream;
+
+	/* @member The texture's shape (2D, cube, 3D, or 2D array). Defaults to `CF_TEXTURE_TYPE_2D`,
+	   so zero-initialized params behave exactly as before this member existed. See `CF_TextureType`. */
+	CF_TextureType texture_type;
+
+	/* @member For `CF_TEXTURE_TYPE_2D_ARRAY` the number of layers; for `CF_TEXTURE_TYPE_3D` the
+	   depth. Zero means one. Cube maps always have six faces and ignore this. Upload individual
+	   faces/layers/slices with `cf_texture_update_layer`. */
+	int layer_count;
+
+	/* @member True to make this a comparison (shadow) sampler: `sampler2DShadow` in the shader,
+	   where each fetch compares the reference value against the texel and returns a visibility
+	   factor, with hardware PCF where available. Pair with a depth `pixel_format` and
+	   `compare_function` (typically `CF_COMPARE_FUNCTION_LESS_THAN_OR_EQUAL`). */
+	bool compare_enable;
+
+	/* @member The comparison used when `compare_enable` is true. See `CF_CompareFunction`. */
+	CF_CompareFunction compare_function;
+} CF_TextureParams;
+// @end
+
+/**
+ * @function cf_texture_defaults
+ * @category graphics
+ * @brief    Returns a good set of default values for `CF_TextureParams` to call `cf_make_texture`.
+ * @related  CF_TextureParams CF_Texture cf_make_texture
+ */
+CF_API CF_TextureParams CF_CALL cf_texture_defaults(int w, int h);
+
+/**
+ * @function cf_make_texture
+ * @category graphics
+ * @brief    Returns a new `CF_Texture`.
+ * @param    texture_params  The texture parameters as a `CF_TextureParams`.
+ * @return   Free it up with `cf_destroy_texture` when done.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update
+ */
+CF_API CF_Texture CF_CALL cf_make_texture(CF_TextureParams texture_params);
+
+/**
+ * @function cf_destroy_texture
+ * @category graphics
+ * @brief    Destroys a `CF_Texture` created by `cf_make_texture`.
+ * @param    texture   The texture.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update
+ */
+CF_API void CF_CALL cf_destroy_texture(CF_Texture texture);
+
+/**
+ * @function cf_texture_update
+ * @category graphics
+ * @brief    Updates the contents of a `CF_Texture`.
+ * @param    texture    The texture.
+ * @param    data       The data to upload to the texture.
+ * @param    size       The size in bytes of `data`.
+ * @remarks  If you plan to frequently update the texture once per frame, it's recommended to set `stream` to
+ *           true in the creation params `CF_TextureParams`.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
+ */
+CF_API void CF_CALL cf_texture_update(CF_Texture texture, void* data, int size);
+
+/**
+ * @function cf_texture_update_mip
+ * @category graphics
+ * @brief    Updates the contents of a specific mip level of a `CF_Texture`.
+ * @param    texture    The texture to update.
+ * @param    data       Pointer to the raw pixel data to upload.
+ * @param    size       Size in bytes of `data`.
+ * @param    mip_level  The mipmap level to update (0 = base level).
+ * @remarks  If you update the texture frequently (e.g., once per frame), it's recommended to set `stream = true`
+ *           when creating the texture using `CF_TextureParams`.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
+ */
+CF_API void CF_CALL cf_texture_update_mip(CF_Texture texture, void* data, int size, int mip_level);
+
+/**
+ * @function cf_texture_update_layer
+ * @category graphics
+ * @brief    Uploads pixels to one face, layer, or slice of a non-2D texture.
+ * @param    texture  The texture, made with a `CF_TextureType` other than 2D.
+ * @param    data     The pixel data for one full face/layer/slice.
+ * @param    size     The size of `data` in bytes.
+ * @param    layer    Cube face index 0-5 (+X, -X, +Y, -Y, +Z, -Z), array layer, or 3D z-slice.
+ * @remarks  `cf_texture_update` uploads the whole image of a 2D texture; this is its per-layer
+ *           counterpart for cube maps, texture arrays, and 3D textures (mip level 0). For a
+ *           specific mip of a layer use `cf_texture_update_layer_mip`.
+ * @related  CF_Texture CF_TextureType cf_texture_update cf_texture_update_mip cf_texture_update_layer_mip cf_make_texture
+ */
+CF_API void CF_CALL cf_texture_update_layer(CF_Texture texture, void* data, int size, int layer);
+
+/**
+ * @function cf_texture_update_layer_mip
+ * @category graphics
+ * @brief    Uploads pixels to one mip level of one face, layer, or slice of a texture.
+ * @param    texture    The texture.
+ * @param    data       The pixel data for that mip of that face/layer/slice.
+ * @param    size       The size of `data` in bytes.
+ * @param    layer      Cube face index 0-5 (+X, -X, +Y, -Y, +Z, -Z), array layer, or 3D z-slice.
+ * @param    mip_level  The mipmap level to update (0 = base level).
+ * @remarks  The (face, mip) upload primitive -- what a baked prefiltered environment cube needs:
+ *           one call per face per roughness mip. The texture needs `allocate_mipmaps` (see
+ *           `CF_TextureParams`).
+ * @related  CF_Texture cf_texture_update_layer cf_texture_update_mip cf_make_texture
+ */
+CF_API void CF_CALL cf_texture_update_layer_mip(CF_Texture texture, void* data, int size, int layer, int mip_level);
+
+/**
+ * @function cf_make_texture_from_dds
+ * @category graphics
+ * @brief    Creates a texture from a DDS file: block-compressed pixels and their mip chain,
+ *           uploaded exactly as stored -- no decode, no recompress.
+ * @param    virtual_path  A path to the DDS file, in the virtual file system.
+ * @remarks  DDS is the interchange file for GPU-ready textures. Supported contents: BC1-BC7
+ *           (including sRGB variants and BC6H HDR), uncompressed RGBA8/BGRA8, full mip
+ *           chains, cube maps, and 2D texture arrays. Block compression is the difference
+ *           between shipping a texture-heavy 3d scene and running out of VRAM: BC formats
+ *           are 4-8x smaller than RGBA8 *on the GPU*, not just on disk. Returns a zero
+ *           handle when the file is malformed or the GPU lacks the format
+ *           (`cf_texture_supports_format`) -- notably the GLES3/web backend has no BC
+ *           support, so ship PNG/JPG fallbacks for web builds. See `cute_dds.h` for the
+ *           underlying parser.
+ * @related  cf_make_texture_from_dds_mem cf_make_texture cf_texture_supports_format cf_texture_update_layer_mip
+ */
+CF_API CF_Texture CF_CALL cf_make_texture_from_dds(const char* virtual_path);
+
+/**
+ * @function cf_make_texture_from_dds_mem
+ * @category graphics
+ * @brief    Creates a texture from DDS bytes already in memory.
+ * @param    data  The DDS file's bytes.
+ * @param    size  Number of bytes.
+ * @remarks  See `cf_make_texture_from_dds`.
+ * @related  cf_make_texture_from_dds cf_make_texture cf_texture_supports_format
+ */
+CF_API CF_Texture CF_CALL cf_make_texture_from_dds_mem(const void* data, int size);
+
+/**
+ * @function cf_generate_mipmaps
+ * @category graphics
+ * @brief    Generates all remaining mip levels from the base level of the texture.
+ * @param    texture    The texture to generate mipmaps for.
+ * @remarks  This is useful when the base level has been updated manually (e.g., for dynamic or render target textures)
+ *           and you want to downsample to fill in the full mip chain.
+ *
+ *           The downsampling runs as GPU blits, so on the SDL_GPU backends the texture must carry
+ *           `CF_TEXTURE_USAGE_COLOR_TARGET_BIT` in addition to its sampler usage -- OR it into
+ *           `cf_texture_defaults`'s usage before `cf_make_texture`.
+ * @related  CF_TextureParams CF_Texture cf_make_texture cf_destroy_texture cf_texture_update cf_texture_update_mip cf_generate_mipmaps
+ */
+CF_API void CF_CALL cf_generate_mipmaps(CF_Texture texture);
+
+/**
+ * @function cf_gpu_sync
+ * @category graphics
+ * @brief    Submits the command buffer, waits for GPU completion via fence, then reacquires.
+ * @remarks  Forces GPU/CPU serialization. A WebGPU web build linked without ASYNCIFY cannot wait, so there it only
+ *           submits, like `cf_gpu_submit`.
+ * @related  cf_gpu_submit
+ */
+CF_API void CF_CALL cf_gpu_sync(void);
+
+/**
+ * @function cf_gpu_submit
+ * @category graphics
+ * @brief    Sends the GPU work recorded so far to the GPU now, without waiting for it to finish.
+ * @remarks  This is `cf_gpu_sync` without the wait. On SDL_GPU it submits the current command buffer and continues
+ *           recording in a new one; on WebGPU it submits the command encoder; on GLES it is `glFlush`.
+ *
+ *           It ends the current render pass. The canvas stays applied, and the next draw resumes the pass, keeping
+ *           everything drawn before the submit. Call it between draws, not between `cf_apply_shader` and its draw:
+ *           apply the shader (and any viewport or scissor) again afterwards.
+ *
+ *           Use it for scheduling, such as starting heavy compute or uploads early, or splitting a frame into
+ *           separately timed chunks for profiling. It does not speed up an ordinary frame, and calling it often can
+ *           make a frame slower. It only sends recorded GPU commands; queued `cf_draw_*` calls are recorded by
+ *           `cf_render_to` or `cf_app_draw_onto_screen`.
+ * @related  cf_gpu_sync cf_render_to cf_push_gpu_label
+ */
+CF_API void CF_CALL cf_gpu_submit(void);
+
+/**
+ * @function cf_texture_handle
+ * @category graphics
+ * @brief    Returns the backend's native texture handle casted to a `uint64_t`: an SDL_GPUTexture* on SDL_GPU,
+ *           a WGPUTextureView on WebGPU.
+ * @remarks  This is useful for e.g. rendering textures in an external system like Dear ImGui.
+ * @related  CF_TextureParams CF_Texture cf_make_texture
+ */
+CF_API uint64_t CF_CALL cf_texture_handle(CF_Texture texture);
+
+/**
+ * @function cf_texture_binding_handle
+ * @category graphics
+ * @brief    Returns the backend's native texture binding handle casted to a `uint64_t`: an
+ *           SDL_GPUTextureSamplerBinding* on SDL_GPU; on WebGPU, a pointer to a `{ WGPUTextureView, WGPUSampler }`
+ *           pair.
+ * @remarks  This is useful for e.g. rendering textures in an external system like Dear ImGui.
+ * @related  CF_TextureParams CF_Texture cf_make_texture
+ */
+CF_API uint64_t CF_CALL cf_texture_binding_handle(CF_Texture texture);
+
+//--------------------------------------------------------------------------------------------------
+// Shader.
+
+/**
+ * @enum     CF_ShaderStage
+ * @category graphics
+ * @brief    Distinction between vertex and fragment shaders.
+ * @related  CF_Shader cf_shader_directory cf_make_shader
+ */
+#define CF_SHADER_STAGE_DEFS \
+	/* @entry Vertex shader stage. */   \
+	CF_ENUM(SHADER_STAGE_VERTEX,   0) \
+	/* @entry Fragment shader stage. */ \
+	CF_ENUM(SHADER_STAGE_FRAGMENT, 1) \
+	/* @entry Compute shader stage. */ \
+	CF_ENUM(SHADER_STAGE_COMPUTE,  2) \
+	/* @end */
+
+typedef enum CF_ShaderStage
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_SHADER_STAGE_DEFS
+	#undef CF_ENUM
+} CF_ShaderStage;
+
+/**
+ * @function cf_shader_directory
+ * @category graphics
+ * @brief    Sets up the app's shader directory.
+ * @param    path     A virtual path to the folder with your shaders (subfolders supported). See [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
+ * @remarks  Shaders can `#include` each other as long as they exist in this directory. Changes to shaders on disk
+ *           may also be watched via `cf_shader_on_changed` to support shader reloading during development. If you call `cf_shader_directory` with
+ *           the path `"/assets/shaders"`, you should then supply paths to `cf_make_shader` relative to the shader directory, and
+ *           simply pass in paths such as `"/shader.vert`" or `"shader.frag"`. This also applies to `#include` between shaders.
+ * @related  CF_Shader cf_make_shader cf_destroy_shader cf_apply_shader CF_Material
+ */
+CF_API void CF_CALL cf_shader_directory(const char* path);
+
+/**
+ * @function cf_shader_on_changed
+ * @category graphics
+ * @brief    Reports when a shader within the shader directory (see `cf_shader_directory`) changes on-disk.
+ * @param    on_changed_fn   The reporting callback.
+ * @param    udata           An optional `void*` passed back to you whenever `on_changed_fn` is called.
+ * @remarks  This is an optional function intended to help facilitate runtime shader reloading during development.
+ *           Callbacks are issued when `cf_app_update` is called. If no callback is registered, CF hot-reloads
+ *           changed shaders automatically: shaders created via `cf_make_draw_shader` or `cf_make_compute_shader`
+ *           are recompiled and swapped in place, so your existing `CF_Shader` handles keep working. Register a
+ *           callback to take over reloading yourself (see `cf_shader_reload`).
+ * @related  CF_Shader cf_make_shader cf_destroy_shader cf_apply_shader CF_Material cf_shader_reload
+ */
+CF_API void CF_CALL cf_shader_on_changed(void (*on_changed_fn)(const char* path, void* udata), void* udata);
+
+/**
+ * @function cf_shader_compile_error
+ * @category graphics
+ * @brief    Returns the error message from the most recent failed shader compilation, or `NULL` if it succeeded.
+ * @remarks  Errors name the exact construct and location, e.g. `my_shader.shd:12: error: unknown function 'foo'`.
+ *           For draw shaders loaded from disk the path is the shader's own path. The string is owned by CF and
+ *           valid until the next shader compilation. See `cf_shader_on_error` to be notified as errors happen.
+ * @related  CF_Shader cf_make_shader cf_make_draw_shader cf_make_shader_from_source cf_shader_on_error
+ */
+CF_API const char* CF_CALL cf_shader_compile_error();
+
+/**
+ * @function cf_shader_on_error
+ * @category graphics
+ * @brief    Reports shader compilation errors as they happen.
+ * @param    on_error_fn   The reporting callback, handed the full error message.
+ * @param    udata         An optional `void*` passed back to you whenever `on_error_fn` is called.
+ * @remarks  This is an optional function intended to help facilitate runtime shader reloading during development,
+ *           e.g. to display compile errors in an in-game overlay instead of just stderr. See also
+ *           `cf_shader_compile_error` to poll the most recent error.
+ * @related  CF_Shader cf_shader_compile_error cf_shader_on_changed cf_make_draw_shader
+ */
+CF_API void CF_CALL cf_shader_on_error(void (*on_error_fn)(const char* error_message, void* udata), void* udata);
+
+/**
+ * @function cf_make_shader
+ * @category graphics
+ * @brief    Creates a shader from glsl source code.
+ * @param    vertex_path   A virtual path to the shader. See [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
+ * @remarks  The shader paths must be in the shader directory. See `cf_shader_directory`. For example, if you call `cf_shader_directory` with
+ *           the path `"/assets/shaders"`, you should then supply paths to `cf_make_shader` relative to the shader directory, and
+ *           simply pass in paths such as `"/shader.vert`" or `"shader.frag"`. This also applies to `#include` between shaders.
+ *
+ *           Note the expected glsl version is 450.
+ *
+ *           You must setup shader inputs (max of 32 inputs, e.g. `in` keyword) and resources sets in a specific way. Use the
+             following resource sets and ordering in your shaders:
+ *
+ *           For _VERTEX_ shaders:
+ *           ```
+ *               0: Sampled textures, followed by storage textures, followed by storage buffers
+ *               1: Uniform buffers
+ *           ```
+ *
+ *           For _FRAGMENT_ shaders:
+ *           ```
+ *               2: Sampled textures, followed by storage textures, followed by storage buffers
+ *               3: Uniform buffers
+ *           ```
+ *
+ *           Example _VERTEX_ shader:
+ *           ```glsl
+ *           layout (set = 0, binding = 0) uniform sampler2D u_image;
+ *
+ *           layout (set = 1, binding = 0) uniform uniform_block {
+ *               vec2 u_texture_size;
+ *           };
+ *           ```
+ *
+ *           Example _FRAGMENT_ shader:
+ *           ```glsl
+ *           layout (set = 2, binding = 0) uniform sampler2D u_image;
+ *
+ *           layout (set = 3, binding = 0) uniform uniform_block {
+ *               vec2 u_texture_size;
+ *           };
+ *           ```
+ *
+ *           For uniforms you only have one uniform block available, and it *must* be named `uniform_block`. However, if your
+ *           shader is made from the draw api (`cf_make_draw_shader`) the uniform block must be named `shd_uniforms`, and its
+ *           binding must start at 1 rather than 0 -- CF's own fragment stage already occupies `set = 2, binding = 0` for its
+ *           image sampler and `set = 3, binding = 0` for its uniform block.
+ *
+ *           Shaders that sit in the shader directory may be `#include`'d into another shader. Though, it doesn't work
+ *           quite exactly like a C/C++ include, it's very similar -- each shader may be included into another
+ *           shader *only once*. If you try to include a file multiple times (such as circular dependencies,
+ *           or if two files try to include the same file) subsequent includes will be ignored.
+ * @related  CF_Shader cf_make_shader cf_shader_directory cf_apply_shader CF_Material
+ */
+CF_API CF_Shader CF_CALL cf_make_shader(const char* vertex_path, const char* fragment_path);
+
+/**
+ * @function cf_shader_reload_from_files
+ * @category graphics
+ * @brief    Recompiles a shader made by `cf_make_shader` from its original vertex and fragment files.
+ * @param    shader  The shader to reload.
+ * @return   Returns true if the shader was rebuilt, false if it did not come from `cf_make_shader`
+ *           or if the rebuild failed.
+ * @remarks  On failure the existing shader keeps working and the reason is available from
+ *           `cf_shader_compile_error`, so a typo saved mid-edit does not blank the screen.
+ *
+ *           Unlike `cf_shader_reload`, which returns a fresh handle for draw shaders, this swaps the
+ *           shader's contents in place -- every copy of the handle stays valid, including ones
+ *           already handed to a `CF_Material`.
+ *
+ *           Shaders under `cf_shader_directory` reload automatically when their files change, so
+ *           this is only needed when driving reloads by hand from `cf_shader_on_changed` (which
+ *           turns the automatic path off).
+ * @related  cf_make_shader cf_shader_reload cf_compute_shader_reload cf_shader_directory cf_shader_on_changed cf_shader_compile_error
+ */
+CF_API bool CF_CALL cf_shader_reload_from_files(CF_Shader* shader);
+
+/**
+ * @function cf_make_shader_from_source
+ * @category graphics
+ * @brief    Creates a shader from strings containing glsl source code.
+ * @param    vertex_src    The vertex shader source as C-string.
+ * @param    fragment_src  The fragment shader source as C-string.
+ * @related  CF_Shader cf_make_shader cf_shader_directory cf_apply_shader CF_Material
+ */
+CF_API CF_Shader CF_CALL cf_make_shader_from_source(const char* vertex_src, const char* fragment_src);
+
+/**
+ * @function cf_compile_shader_to_bytecode
+ * @category graphics
+ * @brief    Compiles a shader to SPIR-V bytecode.
+ * @param    shader_src   Raw glsl, version 450, for the shader as a string.
+ * @param    stage        The shader stage to differentiate between vertex or fragment shaders.
+ * @remarks  This function is good for precompiling shaders to bytecode, which can help speed up app
+ *           startup times. SPIR-V blobs can be saved straight to disk and shipped with your game. Load
+ *           the bytecode blob pair (vertex + fragment shader blobs) into a `CF_Shader` via `cf_make_shader_from_bytecode`.
+ *           The value returned from this function should be passed to `cf_free_shader_bytecode` when it is no longer needed.
+ * @related  CF_Shader CF_ShaderBytecode cf_make_shader_from_bytecode cf_free_shader_bytecode
+ */
+CF_API CF_ShaderBytecode CF_CALL cf_compile_shader_to_bytecode(const char* shader_src, CF_ShaderStage stage);
+
+/**
+ * @function cf_free_shader_bytecode
+ * @category graphics
+ * @brief    Free a bytecode blob previously returned from `cf_compile_shader_to_bytecode`.
+ * @param    bytecode   The bytecode blob to free.
+ * @remarks  This function must only be called on the bytecode blob returned from `cf_compile_shader_to_bytecode`.
+ *           It cannot be called on the bytecode blob generated as a header from the `cute-shaderc` compiler.
+ * @related  CF_ShaderBytecode cf_compile_shader_to_bytecode cf_make_shader_from_bytecode cf_free_shader_bytecode
+ */
+CF_API void CF_CALL cf_free_shader_bytecode(CF_ShaderBytecode bytecode);
+
+/**
+ * @function cf_make_shader_from_bytecode
+ * @category graphics
+ * @brief    Creates a shader from SPIR-V bytecode.
+ * @param    vertex_bytecode    A bytecode blob from `cf_compile_shader_to_bytecode` or the cute-shaderc compiler for the vertex shader.
+ * @param    fragment_bytecode  A bytecode blob from `cf_compile_shader_to_bytecode` or the cute-shaderc compiler for the fragment shader.
+ * @remarks  This function is good for precompiling shaders from bytecode, which can help speed up app
+ *           startup times. SPIR-V blobs can be saved straight to disk and shipped with your game. Create the
+ *           bytecode blob with `cf_make_shader_from_bytecode`.
+ * @related  CF_Shader cf_make_shader_from_bytecode cf_make_shader_from_bytecode
+ */
+CF_API CF_Shader CF_CALL cf_make_shader_from_bytecode(CF_ShaderBytecode vertex_bytecode, CF_ShaderBytecode fragment_bytecode);
+
+/**
+ * @function cf_destroy_shader
+ * @category graphics
+ * @brief    Frees up a `CF_Shader` created by `cf_make_shader`.
+ * @param    shader     A shader.
+ * @related  CF_Shader cf_make_shader cf_destroy_shader cf_apply_shader CF_Material
+ */
+CF_API void CF_CALL cf_destroy_shader(CF_Shader shader);
+
+//--------------------------------------------------------------------------------------------------
+// Compute Shaders.
+//
+// Compute shaders run on the GPU outside the graphics pipeline. SDL_GPU backends (Vulkan, D3D12,
+// Metal) and WebGPU run them natively. GLES3/WebGL2 emulates them with draws, for a restricted class of
+// shaders; see `cf_make_compute_shader`.
+//
+// Uniforms and sampled textures are supplied via a CF_Material's compute stage (cs).
+// Storage buffers and storage textures are bound directly via the dispatch struct.
+
+/**
+ * @function cf_make_compute_shader
+ * @category graphics
+ * @brief    Creates a compute shader from a file in the shader directory.
+ * @param    path   A virtual path to the compute shader source, relative to the shader directory.
+ * @remarks  Compute shaders must use GLSL 450 and follow the SDL_GPU resource set layout convention.
+ *           Resources must be assigned to specific descriptor sets depending on their type:
+ *
+ *           For _COMPUTE_ shaders:
+ *           ```
+ *               Set 0: Sampled textures, followed by readonly storage textures, followed by readonly storage buffers
+ *               Set 1: Read-write storage textures, followed by read-write storage buffers
+ *               Set 2: Uniform buffers
+ *           ```
+ *
+ *           Example _COMPUTE_ shader:
+ *           ```glsl
+ *           layout (set = 0, binding = 0) uniform sampler2D u_input;
+ *
+ *           layout (set = 1, binding = 0, rgba8) uniform writeonly image2D u_output;
+ *
+ *           layout (set = 2, binding = 0) uniform uniform_block {
+ *               float u_time;
+ *           };
+ *
+ *           layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+ *           ```
+ *
+ *           Important notes:
+ *           - Sampled textures (set 0) are bound via `cf_material_set_texture_cs`.
+ *           - Uniforms (set 2) are bound via `cf_material_set_uniform_cs`.
+ *           - Read-write storage textures (set 1) are bound via `CF_ComputeDispatch::rw_textures`.
+ *           - Readonly storage textures (set 0, after samplers) are bound via `CF_ComputeDispatch::ro_textures`.
+ *           - Do NOT use `return` to exit threads before a `barrier()` call. All threads in a workgroup
+ *             must reach `barrier()` uniformly, or the pipeline will fail to compile on some backends.
+ *             Instead, guard `imageStore` and other side-effects behind a bounds check.
+ *
+ *           GLES3/WebGL2 has no compute stage, so CF emulates one. Each dispatch renders the shader
+ *           body once per write site as a fragment pass, one fragment per invocation, recording what
+ *           each invocation writes and where; a second draw per site then scatters the records as
+ *           points into the destination textures and storage buffers. Every read sees memory as it was
+ *           before the dispatch, never a write from the same dispatch. A shader runs on GLES3 only when it has:
+ *           - No `shared` variables, `barrier()`/`memoryBarrier*()`, or atomics.
+ *           - No storage write inside a loop: each `imageStore` or buffer assignment runs at most
+ *             once per invocation.
+ *           - No `vec3`/`uvec3`/`ivec3` buffer element writes (1, 2 or 4 components only).
+ *           Shaders outside this class fail to compile with an error naming the construct. The cost
+ *           is two passes per write site: one full-screen draw sized to the invocation count plus one
+ *           point per invocation. Float destinations need `EXT_color_buffer_float`; without it the
+ *           write is dropped with a one-time warning.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader(const char* path);
+
+/**
+ * @function cf_make_compute_shader_from_source
+ * @category graphics
+ * @brief    Creates a compute shader from a GLSL 450 source string.
+ * @param    src    The compute shader source as a C-string.
+ * @remarks  The source must follow the compute shader resource set layout described in `cf_make_compute_shader`.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader_from_source(const char* src);
+
+/**
+ * @function cf_make_compute_shader_from_bytecode
+ * @category graphics
+ * @brief    Creates a compute shader from SPIR-V bytecode.
+ * @param    bytecode   A bytecode blob from `cf_compile_shader_to_bytecode` with `CF_SHADER_STAGE_COMPUTE`.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_make_compute_shader_from_source cf_make_compute_shader_from_bytecode cf_destroy_compute_shader cf_dispatch_compute
+ */
+CF_API CF_ComputeShader CF_CALL cf_make_compute_shader_from_bytecode(CF_ShaderBytecode bytecode);
+
+/**
+ * @function cf_destroy_compute_shader
+ * @category graphics
+ * @brief    Frees up a compute shader.
+ * @param    shader   The compute shader to destroy.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader
+ */
+CF_API void CF_CALL cf_destroy_compute_shader(CF_ComputeShader shader);
+
+/**
+ * @function cf_compute_shader_reload
+ * @category graphics
+ * @brief    Reloads a compute shader from its original file path.
+ * @param    shader     Pointer to the compute shader handle. Updated in-place on success.
+ * @return   Returns true on success.
+ * @remarks  Only works for compute shaders originally created with `cf_make_compute_shader`. The shader's
+ *           path is recorded internally at creation time.
+ * @related  CF_ComputeShader cf_make_compute_shader cf_destroy_compute_shader
+ */
+CF_API bool CF_CALL cf_compute_shader_reload(CF_ComputeShader* shader);
+
+//--------------------------------------------------------------------------------------------------
+// Storage Buffers.
+
+/**
+ * @struct   CF_StorageBufferParams
+ * @category graphics
+ * @brief    Parameters for creating a storage buffer.
+ * @related  CF_StorageBuffer cf_storage_buffer_defaults cf_make_storage_buffer
+ */
+typedef struct CF_StorageBufferParams
+{
+	/* @member Size in bytes. */
+	int size;
+
+	/* @member GPU can read in compute stage (default true). */
+	bool compute_readable;
+
+	/* @member GPU can write in compute stage (default false). */
+	bool compute_writable;
+
+	/* @member GPU can read in graphics vertex/fragment stage (default true -- the common
+	   case is binding via `cf_apply_vs_storage_buffers`, which requires it). */
+	bool graphics_readable;
+
+	/* @member Buffer can source indirect draws via `cf_draw_elements_indirect` (default false).
+	   Combine with `compute_writable` for GPU-driven rendering: a compute pass culls and writes
+	   draw arguments, the draw call reads them, and the CPU never sees a count. */
+	bool indirect_drawable;
+} CF_StorageBufferParams;
+// @end
+
+/**
+ * @function cf_storage_buffer_defaults
+ * @category graphics
+ * @brief    Returns sensible defaults for `CF_StorageBufferParams`.
+ * @param    size   The size in bytes of the storage buffer.
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_make_storage_buffer
+ */
+CF_INLINE CF_StorageBufferParams cf_storage_buffer_defaults(int size) {
+	CF_StorageBufferParams params;
+	params.size = size;
+	params.compute_readable = true;
+	params.compute_writable = false;
+	params.graphics_readable = true;
+	params.indirect_drawable = false;
+	return params;
+}
+
+/**
+ * @function cf_make_storage_buffer
+ * @category graphics
+ * @brief    Creates a GPU storage buffer.
+ * @param    params   Parameters for the storage buffer, see `CF_StorageBufferParams`.
+ * @related  CF_StorageBuffer CF_StorageBufferParams cf_storage_buffer_defaults cf_destroy_storage_buffer cf_update_storage_buffer
+ */
+CF_API CF_StorageBuffer CF_CALL cf_make_storage_buffer(CF_StorageBufferParams params);
+
+/**
+ * @function cf_update_storage_buffer
+ * @category graphics
+ * @brief    Uploads CPU data into a storage buffer.
+ * @param    buffer   The storage buffer to update.
+ * @param    data     Pointer to the data to upload.
+ * @param    size     Size in bytes of the data to upload.
+ * @related  CF_StorageBuffer cf_make_storage_buffer cf_destroy_storage_buffer
+ */
+CF_API void CF_CALL cf_update_storage_buffer(CF_StorageBuffer buffer, const void* data, int size);
+
+/**
+ * @function cf_destroy_storage_buffer
+ * @category graphics
+ * @brief    Frees up a storage buffer.
+ * @param    buffer   The storage buffer to destroy.
+ * @related  CF_StorageBuffer cf_make_storage_buffer
+ */
+CF_API void CF_CALL cf_destroy_storage_buffer(CF_StorageBuffer buffer);
+
+/**
+ * @function cf_apply_vs_storage_buffers
+ * @category graphics
+ * @brief    Binds storage buffers to the vertex stage of the current graphics pipeline.
+ * @param    buffers   The storage buffers to bind, in shader binding order.
+ * @param    count     Number of buffers.
+ * @remarks  Call after `cf_apply_shader` and before `cf_draw_elements`. The buffers must be
+ *           created with `graphics_readable` (see `CF_StorageBufferParams`). In the shader,
+ *           declare vertex-stage storage buffers at `set = 0` with bindings following any
+ *           vertex-stage samplers:
+ *
+ *           ```glsl
+ *           layout (std430, set = 0, binding = 0) readonly buffer bones_buffer { vec4 u_bones[]; };
+ *           ```
+ *
+ *           Buffer-block tails must be scalars or vectors, so store mat4s as four vec4
+ *           columns and reassemble in the shader (see `cf_draw3d_set_vs_storage_buffers`
+ *           for the `bone()` helper idiom).
+ *
+ *           This is the tool for data too large or too dynamic for uniforms -- skinning
+ *           palettes indexed by a per-instance bone offset, per-instance data pulled by
+ *           `gl_InstanceIndex` (see `cf_draw_elements_instanced`), or buffers a compute
+ *           shader just wrote (`compute_writable` + `graphics_readable` composes). On
+ *           GLES3/web, read-only storage buffers are emulated through texture fetches
+ *           transparently; `compute_writable` buffers are not available there. The
+ *           emulation covers exactly the pattern above -- for web portability keep each
+ *           block anonymous, readonly, and a single runtime `vec4`/`uvec4` array (up to
+ *           4 per stage), packing scalars and matrices into vec4s.
+ * @related  CF_StorageBuffer cf_make_storage_buffer cf_apply_fs_storage_buffers cf_draw_elements_instanced cf_apply_shader
+ */
+CF_API void CF_CALL cf_apply_vs_storage_buffers(CF_StorageBuffer* buffers, int count);
+
+/**
+ * @function cf_apply_fs_storage_buffers
+ * @category graphics
+ * @brief    Binds storage buffers to the fragment stage of the current graphics pipeline.
+ * @param    buffers   The storage buffers to bind, in shader binding order.
+ * @param    count     Number of buffers.
+ * @remarks  Call after `cf_apply_shader` and before `cf_draw_elements`. Declare fragment-stage
+ *           storage buffers at `set = 2` with bindings following any fragment-stage samplers.
+ *           See `cf_apply_vs_storage_buffers` for the rest of the contract.
+ * @related  CF_StorageBuffer cf_make_storage_buffer cf_apply_vs_storage_buffers cf_apply_shader
+ */
+CF_API void CF_CALL cf_apply_fs_storage_buffers(CF_StorageBuffer* buffers, int count);
+
+//--------------------------------------------------------------------------------------------------
+// Compute Dispatch.
+
+/**
+ * @struct   CF_ComputeDispatch
+ * @category graphics
+ * @brief    Parameters for dispatching a compute shader.
+ * @remarks  Read-write resources are bound at compute pass creation time (SDL_GPU requirement).
+ *           Read-only storage resources are bound after the pipeline bind.
+ *           Sampled textures and uniforms come from the material (name-matched).
+ * @related  CF_ComputeShader CF_ComputeDispatch cf_compute_dispatch_defaults cf_dispatch_compute
+ */
+typedef struct CF_ComputeDispatch
+{
+	/* @member Read-write storage buffers (bound at pass creation). */
+	CF_StorageBuffer* rw_buffers;
+	/* @member Number of read-write storage buffers. */
+	int rw_buffer_count;
+	/* @member Read-write storage textures (bound at pass creation). */
+	CF_Texture* rw_textures;
+	/* @member Number of read-write storage textures. */
+	int rw_texture_count;
+
+	/* @member Read-only storage buffers (bound after pipeline bind). */
+	CF_StorageBuffer* ro_buffers;
+	/* @member Number of read-only storage buffers. */
+	int ro_buffer_count;
+	/* @member Read-only storage textures (bound after pipeline bind). */
+	CF_Texture* ro_textures;
+	/* @member Number of read-only storage textures. */
+	int ro_texture_count;
+
+	/* @member Workgroup count X. */
+	int group_count_x;
+	/* @member Workgroup count Y. */
+	int group_count_y;
+	/* @member Workgroup count Z. */
+	int group_count_z;
+} CF_ComputeDispatch;
+// @end
+
+/**
+ * @function cf_compute_dispatch_defaults
+ * @category graphics
+ * @brief    Returns sensible defaults for `CF_ComputeDispatch`.
+ * @param    gx   Workgroup count X.
+ * @param    gy   Workgroup count Y.
+ * @param    gz   Workgroup count Z.
+ * @related  CF_ComputeDispatch cf_dispatch_compute
+ */
+CF_INLINE CF_ComputeDispatch cf_compute_dispatch_defaults(int gx, int gy, int gz) {
+	CF_ComputeDispatch d;
+	CF_MEMSET(&d, 0, sizeof(d));
+	d.group_count_x = gx;
+	d.group_count_y = gy;
+	d.group_count_z = gz;
+	return d;
+}
+
+/**
+ * @function cf_dispatch_compute
+ * @category graphics
+ * @brief    Dispatches a compute shader.
+ * @param    shader     The compute shader to dispatch.
+ * @param    material   Holds uniforms and sampled textures for the compute stage (set via `cf_material_set_uniform_cs` / `cf_material_set_texture_cs`).
+ * @param    dispatch   Storage resources and workgroup counts.
+ * @related  CF_ComputeShader CF_ComputeDispatch CF_Material cf_material_set_uniform_cs cf_material_set_texture_cs
+ */
+CF_API void CF_CALL cf_dispatch_compute(CF_ComputeShader shader, CF_Material material, CF_ComputeDispatch dispatch);
+
+//--------------------------------------------------------------------------------------------------
+// Render Canvases.
+
+/**
+ * @enum     CF_SampleCount
+ * @category graphics
+ * @brief    Multisample count used for MSAA render targets.
+ * @remarks  Turning this on will attempt to use hardware to blur everything you render.
+ *           You may not sample from canvas textures with sample counts greater than 1.
+ * @related  CF_SampleCount cf_samplecount_string CF_TextureParams
+ */
+#define CF_SAMPLE_COUNT_DEFS \
+	/* @entry No multisampling. */                          \
+	CF_ENUM(SAMPLE_COUNT_1, 0)                              \
+	/* @entry Multisample anti-aliasing with 2x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_2, 1)                              \
+	/* @entry Multisample anti-aliasing with 4x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_4, 2)                              \
+	/* @entry Multisample anti-aliasing with 8x samples. */ \
+	CF_ENUM(SAMPLE_COUNT_8, 3)                              \
+	/* @end */
+
+typedef enum CF_SampleCount
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_SAMPLE_COUNT_DEFS
+	#undef CF_ENUM
+} CF_SampleCount;
+
+/**
+ * @function cf_samplecount_string
+ * @category graphics
+ * @brief    Returns a `CF_SampleCount` as a string.
+ * @related  CF_SampleCount CF_TextureParams
+ */
+CF_INLINE const char* cf_samplecount_string(CF_SampleCount count) {
+	switch (count) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_SAMPLE_COUNT_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @function CF_MAX_CANVAS_TARGETS
+ * @category graphics
+ * @brief    The most color targets a canvas can ever have, on any backend.
+ * @remarks  This sizes the arrays in `CF_CanvasParams` and `CF_RenderState`. The current device may
+ *           support fewer -- `cf_query_max_canvas_targets` returns the real limit. Four is the portable
+ *           guarantee.
+ * @related  CF_CanvasParams cf_make_canvas cf_canvas_get_target2 cf_query_max_canvas_targets
+ */
+#define CF_MAX_CANVAS_TARGETS 8
+
+/**
+ * @function cf_query_max_canvas_targets
+ * @category graphics
+ * @brief    Returns how many color targets a canvas can have on the current device.
+ * @return   A value from 4 to `CF_MAX_CANVAS_TARGETS`.
+ * @remarks  `cf_make_canvas` fails with an assert and returns an invalid canvas when `target_count` exceeds
+ *           this. Per backend:
+ *
+ *           - D3D12 and Metal: 8.
+ *           - Vulkan: 4. Vulkan only guarantees four color attachments, and SDL_GPU doesn't expose the
+ *             device's real limit, so CF reports the guarantee.
+ *           - GLES/WebGL2: the smaller of `GL_MAX_DRAW_BUFFERS` and `GL_MAX_COLOR_ATTACHMENTS`, capped at 8.
+ *             GLES 3.0 and WebGL2 only guarantee four.
+ *           - WebGPU: the smaller of `maxColorAttachments` and `maxColorAttachmentBytesPerSample / 8` (an
+ *             RGBA8 target costs 8 bytes per sample), capped at 8. The spec guarantees four. Wider
+ *             formats cost more, so a canvas of 16- or 32-bit float targets may fit fewer.
+ *
+ *           Check this before making a canvas with more than four targets, and fall back to fewer
+ *           targets (or more passes) when it comes up short. Requires a running app.
+ * @related  CF_MAX_CANVAS_TARGETS CF_CanvasParams cf_make_canvas cf_query_backend
+ */
+CF_API int CF_CALL cf_query_max_canvas_targets(void);
+
+/**
+ * @struct   CF_CanvasParams
+ * @category graphics
+ * @brief    A texture the GPU can draw upon (with an optional depth/stencil texture).
+ * @remarks  The clear color settings are used when `cf_apply_canvas` is called. You can change the clear color
+ *           by calling `cf_clear_color`. Make your own canvas whenever you want to draw to an off-screen buffer. Use
+ *           cases include rendering at a fixed low resolution for a retro/pixel-art look (draw at e.g. 320x180, then
+ *           scale up to the window with `cf_draw_canvas`), rendering reflections, advanced lighting techniques, or
+ *           other kinds of multi-pass effects.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+typedef struct CF_CanvasParams
+{
+	/* @member The name of the canvas, for debug purposes. */
+	const char* name;
+
+	/* @member The color target(s). `target` aliases `targets[0]`, so single-target code reads and
+	   writes exactly as before. For multiple render targets set `target_count` and fill
+	   `targets[1]` through `targets[target_count - 1]` -- `cf_canvas_defaults` pre-fills every slot
+	   with the same defaults, so typically only the pixel formats need adjusting. A fragment
+	   shader writes them via `layout (location = N) out`. See `CF_TextureParams`. */
+	union
+	{
+		CF_TextureParams target;
+		CF_TextureParams targets[CF_MAX_CANVAS_TARGETS];
+	};
+
+	/* @member How many color targets this canvas has, from 1 to `cf_query_max_canvas_targets`
+	   (at most `CF_MAX_CANVAS_TARGETS`); more fails canvas creation. Zero means
+	   one, so zero-initialized params behave exactly as before this member existed. Multiple render
+	   targets may be multisampled: each target resolves into its own texture in its own format, and
+	   `cf_canvas_get_target`/`cf_canvas_get_target2`/readback all return the resolved side. The GLES
+	   backend still restricts MSAA to single-target canvases. */
+	int target_count;
+
+	/* @member Optional: render into one face/layer/slice of an existing cube, array, or 3D texture
+	   instead of creating a color target. The texture needs `CF_TEXTURE_USAGE_COLOR_TARGET_BIT`.
+	   The classic use is point-light shadows: make one cube texture, then six canvases attached to
+	   its faces, and render the scene once per face. The canvas does not own the texture --
+	   destroying the canvas leaves it alive, and `cf_canvas_get_target` returns it. Zero'd handle
+	   (the default) creates an owned 2D target as usual.
+
+	   A DEPTH-format attach (needs `CF_TEXTURE_USAGE_DEPTH_STENCIL_TARGET_BIT`) flips the meaning:
+	   the texture becomes the canvas's depth attachment and there is no color side at all -- a
+	   depth-only pass, pairing with `compare_enable` and `samplerCubeShadow`/`sampler2DShadow` for
+	   shadow maps. Note: cube-face DEPTH rendering currently only lands on the OpenGL ES backend
+	   and SDL_GPU's Vulkan/Metal drivers -- SDL_GPU's D3D12 driver creates only 2D depth views, so
+	   depth cube faces silently miss there (2D depth attaches work everywhere). */
+	CF_Texture attach_target;
+
+	/* @member Which face (0-5: +X, -X, +Y, -Y, +Z, -Z), array layer, or 3D slice of
+	   `attach_target` to render into.
+
+	   For a cube face rendered through a right-handed camera (`cf_look_at`/`cf_perspective`,
+	   e.g. via `cute_draw3d.h`), mind the T axis: CF renders top-row-first (row 0 at clip
+	   y = +1), which is the opposite of the row a right-handed face camera's `up` vector
+	   would put there. Rendering as-is stores every face upside down; a `samplerCube` fetch
+	   then reads shadows/reflections from the mirrored elevation. Mirror clip-space y in the
+	   face projection to fix it (which reverses triangle winding, so flip cull mode too). See
+	   `samples/point_light.c`'s `face_projection`/`face_state` for the exact fix. */
+	int attach_layer;
+
+	/* @member Which mip level of `attach_target` to render into (default 0). The canvas takes the
+	   mip's dimensions, so `cf_canvas_get_size` and the viewport shrink accordingly. This is the
+	   render-into-mip primitive behind downsample chains (bloom: one canvas per mip, sample mip
+	   N-1 while rendering mip N) and IBL prefiltering (combine with `attach_layer` for one canvas
+	   per cube face per roughness mip). Composes with `attach_layer`; the texture needs
+	   `allocate_mipmaps` (see `CF_TextureParams`). */
+	int attach_mip;
+
+	/* @member Defaults to false. If true enables a depth-stencil buffer attachment. Required for any
+	   depth or stencil testing: without it the depth fields of `CF_RenderState` are silently ignored,
+	   which for 3d looks like the far side of a model drawing over the near side. */
+	bool depth_stencil_enable;
+
+	/* @member The texture used to store depth and stencil information when rendering to the canvas. See `CF_TextureParams`. */
+	CF_TextureParams depth_stencil_target;
+
+	/* @member MSAA sample count; must be 1, 2, 4, or 8 (see `CF_SampleCount`). Defaults to 1 (no MSAA). */
+	CF_SampleCount sample_count;
+} CF_CanvasParams;
+// @end
+
+/**
+ * @function cf_canvas_defaults
+ * @category graphics
+ * @brief    Returns a good set of default values for a `CF_CanvasParams` to call `cf_make_canvas`.
+ * @remarks  Formats and usages (including the negotiated depth format) fill in regardless of size,
+ *           so `cf_canvas_defaults(0, 0)` is the right starting point for attach-mode canvases
+ *           (`attach_target`), which take their size from the attached texture and mip. Standalone
+ *           canvases need a real size -- `cf_make_canvas` rejects zero-sized targets.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+CF_API CF_CanvasParams CF_CALL cf_canvas_defaults(int w, int h);
+
+/**
+ * @function cf_make_canvas
+ * @category graphics
+ * @brief    Returns a new `CF_Canvas` for offscreen rendering.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+CF_API CF_Canvas CF_CALL cf_make_canvas(CF_CanvasParams canvas_params);
+
+/**
+ * @function cf_destroy_canvas
+ * @category graphics
+ * @brief    Frees up a `CF_Canvas` created by `cf_make_canvas`.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+CF_API void CF_CALL cf_destroy_canvas(CF_Canvas canvas);
+
+/**
+ * @function cf_canvas_get_size
+ * @category graphics
+ * @brief    Fetches the canvas's dimensions in pixels.
+ * @param    canvas  The canvas.
+ * @param    w       Receives the width; can be `NULL`.
+ * @param    h       Receives the height; can be `NULL`.
+ * @remarks  For a canvas attached to a mip level (`attach_mip`) this is the mip's size.
+ * @related  CF_Canvas cf_make_canvas CF_CanvasParams
+ */
+CF_API void CF_CALL cf_canvas_get_size(CF_Canvas canvas, int* w, int* h);
+
+/**
+ * @function cf_canvas_get_target
+ * @category graphics
+ * @brief    Returns the `target` texture the canvas renders upon.
+ * @remarks  If you turn on MSAA you may not sample from this texture.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+CF_API CF_Texture CF_CALL cf_canvas_get_target(CF_Canvas canvas);
+
+/**
+ * @function cf_canvas_get_target2
+ * @category graphics
+ * @brief    Fetches one of the canvas's color targets as a texture, by index.
+ * @param    canvas  The canvas.
+ * @param    index   Which color target, from 0 to `target_count - 1`.
+ * @return   Returns the texture backing that color target, or a zero'd texture for an out-of-range
+ *           index. `cf_canvas_get_target` is equivalent to index 0.
+ * @remarks  This is how a later pass samples a g-buffer: bind each target you need with
+ *           `cf_material_set_texture_fs` (or `cf_draw_set_texture`).
+ * @related  CF_Canvas cf_canvas_get_target cf_canvas_readback2 CF_CanvasParams
+ */
+CF_API CF_Texture CF_CALL cf_canvas_get_target2(CF_Canvas canvas, int index);
+
+/**
+ * @function cf_canvas_get_depth_stencil_target
+ * @category graphics
+ * @brief    Returns the `depth_stencil_target` texture the canvas renders upon.
+ * @related  CF_CanvasParams cf_canvas_defaults cf_make_canvas cf_destroy_canvas cf_apply_canvas cf_clear_color
+ */
+CF_API CF_Texture CF_CALL cf_canvas_get_depth_stencil_target(CF_Canvas canvas);
+
+/**
+ * @function cf_canvas_copy_depth
+ * @category graphics
+ * @brief    Copies the whole depth (and stencil) target of one canvas into another.
+ * @param    dst     The canvas receiving the depth.
+ * @param    src     The canvas whose depth is copied.
+ * @remarks  This is how a pass samples the depth of the canvas it is still depth-testing against:
+ *           soft particles, water, decals, and SDF occlusion all want both at once, and a texture
+ *           can't be sampled while attached. Draw the scene, copy its depth, then draw the effects
+ *           into the scene canvas while they sample the copy.
+ *
+ *           ```c
+ *           CF_CanvasParams params = cf_canvas_defaults(w, h);
+ *           params.depth_stencil_enable = true;
+ *           CF_Canvas scene = cf_make_canvas(params);
+ *           params.depth_stencil_target.usage |= CF_TEXTURE_USAGE_SAMPLER_BIT;
+ *           params.depth_stencil_target.filter = CF_FILTER_NEAREST;
+ *           CF_Canvas scene_depth = cf_make_canvas(params);
+ *
+ *           // ...draw opaque geometry into `scene`...
+ *           cf_canvas_copy_depth(scene_depth, scene);
+ *           cf_material_set_texture_fs(fx, "u_depth", cf_canvas_get_depth_stencil_target(scene_depth));
+ *           cf_apply_canvas(scene, false);
+ *           // ...draw effects with depth testing on, fading against `u_depth`...
+ *           ```
+ *
+ *           Both canvases need a depth target of the same size and format, and neither may use
+ *           MSAA; anything else asserts, logs to stderr, and copies nothing. Only `dst` needs
+ *           `CF_TEXTURE_USAGE_SAMPLER_BIT`, and only to be sampled. The copy works at canvas
+ *           level because a depth target without sampler usage may not be a texture at all
+ *           (a renderbuffer on OpenGL ES). If `dst` exists only to hold the copy, make it
+ *           depth-only by attaching a depth texture with `attach_target`.
+ *
+ *           Draws submitted through the immediate-mode draw API are copied only after they reach
+ *           the canvas (`cf_render_to`). SDL_GPU's D3D12 driver copies only the depth plane, so
+ *           don't rely on a copied stencil there.
+ * @related  cf_canvas_get_depth_stencil_target CF_CanvasParams cf_make_canvas cf_apply_canvas
+ */
+CF_API void CF_CALL cf_canvas_copy_depth(CF_Canvas dst, CF_Canvas src);
+
+/**
+ * @function cf_clear_canvas
+ * @category graphics
+ * @brief    Clears the color and depth-stencil targets of the given canvas.
+ * @param    canvas  The canvas to clear.
+ * @remarks  This clears the canvas to its configured clear color and clears depth to 1.0 (furthest depth).
+ *           If the canvas has no depth-stencil target, only the color target will be cleared.
+ * @related  cf_make_canvas cf_clear_color cf_clear_depth_stencil
+ */
+CF_API void CF_CALL cf_clear_canvas(CF_Canvas canvas);
+
+/**
+ * @function cf_canvas_set_clear_color
+ * @category graphics
+ * @brief    Gives one canvas its own clear color, instead of the global `cf_clear_color`.
+ * @param    canvas  The canvas.
+ * @param    color   The color this canvas clears to from now on.
+ * @remarks  `cf_clear_color` sets a single global value that every clear reads, so a multi-pass
+ *           renderer wanting different clears per pass has to set the global before each pass and
+ *           put it back afterwards -- and forgetting the restore leaves the main screen clearing to
+ *           whatever the last pass wanted. This sets the value on the canvas once:
+ *
+ *           ```c
+ *           cf_canvas_set_clear_color(gbuffer, cf_color_black());
+ *           cf_canvas_set_clear_color(composite, cf_color_invisible());
+ *           ```
+ *
+ *           A canvas with no override set clears to the global, so existing code behaves exactly as
+ *           before. There is no way to go back to inheriting once set -- set the value you want.
+ * @related  CF_Canvas cf_clear_color cf_canvas_set_clear_depth_stencil cf_clear_canvas cf_apply_canvas
+ */
+CF_API void CF_CALL cf_canvas_set_clear_color(CF_Canvas canvas, CF_Color color);
+
+/**
+ * @function cf_canvas_set_clear_color2
+ * @category graphics
+ * @brief    Gives one color target of a multi-target canvas its own clear color.
+ * @param    canvas  The canvas.
+ * @param    index   Which color target, from 0 to `target_count - 1`.
+ * @param    color   The color this target clears to from now on.
+ * @remarks  A g-buffer typically wants different clears per attachment -- transparent black for
+ *           color, far-plane values for depth-carrying targets. `cf_canvas_set_clear_color` sets
+ *           every target at once; this sets just one. Targets with no override clear to the
+ *           global `cf_clear_color`.
+ * @related  CF_Canvas cf_canvas_set_clear_color cf_clear_color CF_CanvasParams
+ */
+CF_API void CF_CALL cf_canvas_set_clear_color2(CF_Canvas canvas, int index, CF_Color color);
+
+/**
+ * @function cf_canvas_set_clear_depth_stencil
+ * @category graphics
+ * @brief    Gives one canvas its own clear depth and stencil, instead of the global `cf_clear_depth_stencil`.
+ * @param    canvas   The canvas.
+ * @param    depth    The depth value this canvas clears to. 1.0 pairs with `CF_COMPARE_FUNCTION_LESS_THAN`.
+ * @param    stencil  The stencil value this canvas clears to.
+ * @remarks  See `cf_canvas_set_clear_color`. A canvas with no override clears to the global values.
+ * @related  CF_Canvas cf_clear_depth_stencil cf_canvas_set_clear_color cf_clear_canvas cf_render_state_3d_defaults
+ */
+CF_API void CF_CALL cf_canvas_set_clear_depth_stencil(CF_Canvas canvas, float depth, uint32_t stencil);
+
+//--------------------------------------------------------------------------------------------------
+// Readback.
+
+/**
+ * @function cf_canvas_readback
+ * @category graphics
+ * @brief    Initiates an async GPU-to-CPU copy of pixel data from a canvas.
+ * @param    canvas  The canvas to read back pixel data from.
+ * @return   Returns a `CF_Readback` handle. Returns a zero handle on failure, such as a target format the
+ *           backend can't read back.
+ * @remarks  Works on every backend: SDL_GPU, WebGPU, and GLES3/WebGL2. Ends any active render pass silently. Each readback uses its own command buffer and fence.
+ *           For screen readback, use `cf_canvas_readback(cf_app_get_canvas())`.
+ * @related  CF_Readback cf_readback_ready cf_readback_data cf_readback_size cf_destroy_readback
+ */
+CF_API CF_Readback CF_CALL cf_canvas_readback(CF_Canvas canvas);
+
+/**
+ * @function cf_canvas_readback2
+ * @category graphics
+ * @brief    Initiates a readback of one specific color target of a multi-target canvas.
+ * @param    canvas  The canvas.
+ * @param    index   Which color target, from 0 to `target_count - 1`.
+ * @return   Returns a `CF_Readback`, or a zero'd handle for an out-of-range index.
+ * @remarks  `cf_canvas_readback` is equivalent to index 0. The pixel format matches that target's
+ *           format.
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_data cf_canvas_get_target2
+ */
+CF_API CF_Readback CF_CALL cf_canvas_readback2(CF_Canvas canvas, int index);
+
+/**
+ * @function cf_readback_ready
+ * @category graphics
+ * @brief    Polls whether the async readback has completed.
+ * @param    readback  The readback handle to poll.
+ * @return   Returns true once the GPU has finished the download. Caches the result after first true.
+ * @related  CF_Readback cf_canvas_readback cf_readback_data cf_readback_size cf_destroy_readback
+ */
+CF_API bool CF_CALL cf_readback_ready(CF_Readback readback);
+
+/**
+ * @function cf_readback_data
+ * @category graphics
+ * @brief    Copies readback pixel data into the provided buffer.
+ * @param    readback  The readback handle.
+ * @param    data      Pointer to the destination buffer.
+ * @param    size      Size of the destination buffer in bytes.
+ * @return   Returns the number of bytes copied, or 0 if the readback is not yet ready. Copies `min(size, total)` bytes.
+ * @remarks  Pixel format matches the canvas target format (typically RGBA8, 4 bytes per pixel).
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_size cf_destroy_readback
+ */
+CF_API int CF_CALL cf_readback_data(CF_Readback readback, void* data, int size);
+
+/**
+ * @function cf_readback_size
+ * @category graphics
+ * @brief    Returns the total size in bytes of the readback data.
+ * @param    readback  The readback handle.
+ * @return   Returns `w * h * bytes_per_pixel` for the readback, or 0 if the handle is invalid.
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_data cf_destroy_readback
+ */
+CF_API int CF_CALL cf_readback_size(CF_Readback readback);
+
+/**
+ * @function cf_destroy_readback
+ * @category graphics
+ * @brief    Destroys a readback handle and releases all associated resources.
+ * @param    readback  The readback handle to destroy.
+ * @remarks  If the readback is still in-flight, this will block until the GPU completes.
+ * @related  CF_Readback cf_canvas_readback cf_readback_ready cf_readback_data cf_readback_size
+ */
+CF_API void CF_CALL cf_destroy_readback(CF_Readback readback);
+
+//--------------------------------------------------------------------------------------------------
+// Mesh.
+
+/**
+ * @enum     CF_VertexFormat
+ * @category graphics
+ * @brief    The various supported vertex formats.
+ * @remarks  Vertex formats define the type and size of vertex attributes in a vertex buffer.
+ * @related  CF_VertexFormat cf_vertex_format_string
+ */
+#define CF_VERTEX_FORMAT_DEFS \
+	/* @entry 32-bit signed integer. */                     \
+	CF_ENUM(VERTEX_FORMAT_INT,              0)              \
+	/* @entry Two 32-bit signed integers. */                \
+	CF_ENUM(VERTEX_FORMAT_INT2,             1)              \
+	/* @entry Three 32-bit signed integers. */              \
+	CF_ENUM(VERTEX_FORMAT_INT3,             2)              \
+	/* @entry Four 32-bit signed integers. */               \
+	CF_ENUM(VERTEX_FORMAT_INT4,             3)              \
+	/* @entry 32-bit unsigned integer. */                   \
+	CF_ENUM(VERTEX_FORMAT_UINT,             4)              \
+	/* @entry Two 32-bit unsigned integers. */              \
+	CF_ENUM(VERTEX_FORMAT_UINT2,            5)              \
+	/* @entry Three 32-bit unsigned integers. */            \
+	CF_ENUM(VERTEX_FORMAT_UINT3,            6)              \
+	/* @entry Four 32-bit unsigned integers. */             \
+	CF_ENUM(VERTEX_FORMAT_UINT4,            7)              \
+	/* @entry 32-bit floating point number. */              \
+	CF_ENUM(VERTEX_FORMAT_FLOAT,            8)              \
+	/* @entry Two 32-bit floating point numbers. */         \
+	CF_ENUM(VERTEX_FORMAT_FLOAT2,           9)              \
+	/* @entry Three 32-bit floating point numbers. */       \
+	CF_ENUM(VERTEX_FORMAT_FLOAT3,           10)             \
+	/* @entry Four 32-bit floating point numbers. */        \
+	CF_ENUM(VERTEX_FORMAT_FLOAT4,           11)             \
+	/* @entry Two 8-bit signed integers. */                 \
+	CF_ENUM(VERTEX_FORMAT_BYTE2,            12)             \
+	/* @entry Four 8-bit signed integers. */                \
+	CF_ENUM(VERTEX_FORMAT_BYTE4,            13)             \
+	/* @entry Two 8-bit unsigned integers. */               \
+	CF_ENUM(VERTEX_FORMAT_UBYTE2,           14)             \
+	/* @entry Four 8-bit unsigned integers. */              \
+	CF_ENUM(VERTEX_FORMAT_UBYTE4,           15)             \
+	/* @entry Two 8-bit signed normalized integers. */      \
+	CF_ENUM(VERTEX_FORMAT_BYTE2_NORM,       16)             \
+	/* @entry Four 8-bit signed normalized integers. */     \
+	CF_ENUM(VERTEX_FORMAT_BYTE4_NORM,       17)             \
+	/* @entry Two 8-bit unsigned normalized integers. */    \
+	CF_ENUM(VERTEX_FORMAT_UBYTE2_NORM,      18)             \
+	/* @entry Four 8-bit unsigned normalized integers. */   \
+	CF_ENUM(VERTEX_FORMAT_UBYTE4_NORM,      19)             \
+	/* @entry Two 16-bit signed integers. */                \
+	CF_ENUM(VERTEX_FORMAT_SHORT2,           20)             \
+	/* @entry Four 16-bit signed integers. */               \
+	CF_ENUM(VERTEX_FORMAT_SHORT4,           21)             \
+	/* @entry Two 16-bit unsigned integers. */              \
+	CF_ENUM(VERTEX_FORMAT_USHORT2,          22)             \
+	/* @entry Four 16-bit unsigned integers. */             \
+	CF_ENUM(VERTEX_FORMAT_USHORT4,          23)             \
+	/* @entry Two 16-bit signed normalized integers. */     \
+	CF_ENUM(VERTEX_FORMAT_SHORT2_NORM,      24)             \
+	/* @entry Four 16-bit signed normalized integers. */    \
+	CF_ENUM(VERTEX_FORMAT_SHORT4_NORM,      25)             \
+	/* @entry Two 16-bit unsigned normalized integers. */   \
+	CF_ENUM(VERTEX_FORMAT_USHORT2_NORM,     26)             \
+	/* @entry Four 16-bit unsigned normalized integers. */  \
+	CF_ENUM(VERTEX_FORMAT_USHORT4_NORM,     27)             \
+	/* @entry Two 16-bit floating point numbers. */         \
+	CF_ENUM(VERTEX_FORMAT_HALF2,            28)             \
+	/* @entry Four 16-bit floating point numbers. */        \
+	CF_ENUM(VERTEX_FORMAT_HALF4,            29)             \
+	/* @end */
+
+
+typedef enum CF_VertexFormat
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_VERTEX_FORMAT_DEFS
+	#undef CF_ENUM
+} CF_VertexFormat;
+
+/**
+ * @function cf_vertex_format_string
+ * @category graphics
+ * @brief    Returns a `CF_VertexFormat` converted to a C string.
+ * @related  CF_VertexFormat cf_vertex_format_string CF_VertexAttribute cf_mesh_append_attributes
+ */
+CF_INLINE const char* cf_vertex_format_string(CF_VertexFormat format) {
+	switch (format) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_VERTEX_FORMAT_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @struct   CF_VertexAttribute
+ * @category graphics
+ * @brief    Describes the memory layout of vertex attributes.
+ * @remarks  An attribute is a component of a vertex, usually one, two, three or four floats/integers. A vertex is an input
+ *           to a vertex shader. A `CF_Mesh` is a collection of vertices and attribute layout definitions.
+ * @related  CF_VertexAttribute cf_mesh_append_attributes
+ */
+typedef struct CF_VertexAttribute
+{
+	/* @member The name of the vertex attribute as it appears in the shader. */
+	const char* name;
+
+	/* @member The layout in memory of one vertex. See `CF_VertexFormat`. */
+	CF_VertexFormat format;
+
+	/* @member The offset in memory from the beginning of a vertex to this attribute. */
+	int offset;
+
+	/* @member Set to true if you want this attribute bound to the mesh's instance buffer, instead of the vertex buffer. */
+	bool per_instance;
+} CF_VertexAttribute;
+// @end
+
+/**
+ * @function CF_MESH_MAX_VERTEX_ATTRIBUTES
+ * @category graphics
+ * @brief    Max number of vertex attributes allowed on a mesh.
+ * @related  cf_make_mesh CF_VertexAttribute
+ */
+#define CF_MESH_MAX_VERTEX_ATTRIBUTES (32)
+
+/**
+ * @function cf_make_mesh
+ * @category graphics
+ * @brief    Returns a `CF_Mesh`.
+ * @param    vertex_buffer_size_in_bytes  The size of the mesh's vertex buffer.
+ * @param    attributes                   Vertex attributes to define the memory layout of the mesh vertices.
+ * @param    attribute_count              Number of attributes in `attributes`.
+ * @param    vertex_stride                Number of bytes between each vertex.
+ * @remarks  The max number of attributes is `CF_MESH_MAX_VERTEX_ATTRIBUTES` (32). Any more attributes beyond 32 will be ignored.
+ * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_update_vertex_data cf_mesh_set_index_buffer cf_mesh_set_instance_buffer
+ */
+CF_API CF_Mesh CF_CALL cf_make_mesh(int vertex_buffer_size_in_bytes, const CF_VertexAttribute* attributes, int attribute_count, int vertex_stride);
+
+/**
+ * @function cf_mesh_set_index_buffer
+ * @category graphics
+ * @brief    Sets up an index buffer on the mesh, for indexed style rendering.
+ * @param    mesh                         The mesh.
+ * @param    index_buffer_size_in_bytes   The size of the mesh's index buffer.
+ * @param    index_bit_count              The number of bits to use for indices, must be either 16 or 32.
+ * @related  CF_Mesh cf_make_mesh cf_mesh_update_index_data
+ */
+CF_API void CF_CALL cf_mesh_set_index_buffer(CF_Mesh mesh, int index_buffer_size_in_bytes, int index_bit_count);
+
+/**
+ * @function cf_mesh_set_instance_buffer
+ * @category graphics
+ * @brief    Sets up an instance buffer on the mesh, for instanced style rendering.
+ * @param    mesh                         The mesh.
+ * @param    instance_buffer_size_in_bytes  The size of the mesh's index buffer.
+ * @param    instance_stride                The number of bytes for each instance data.
+ * @related  CF_Mesh cf_make_mesh cf_mesh_update_instance_data
+ */
+CF_API void CF_CALL cf_mesh_set_instance_buffer(CF_Mesh mesh, int instance_buffer_size_in_bytes, int instance_stride);
+
+/**
+ * @function cf_mesh_append_attributes
+ * @category graphics
+ * @brief    Appends vertex attributes to a mesh after creation.
+ * @param    mesh             The mesh.
+ * @param    attributes       The attributes to append. See `CF_VertexAttribute`.
+ * @param    attribute_count  How many to append.
+ * @remarks  Chiefly for per-instance attributes (`per_instance` set to true): a mesh created with
+ *           only its vertex layout can gain instancing later without being rebuilt -- declare the
+ *           instance attributes here, then call `cf_mesh_set_instance_buffer` and
+ *           `cf_mesh_update_instance_data`. Appending beyond `CF_MESH_MAX_VERTEX_ATTRIBUTES`
+ *           ignores the extras, matching `cf_make_mesh`.
+ * @related  CF_Mesh cf_make_mesh CF_VertexAttribute cf_mesh_set_instance_buffer cf_mesh_update_instance_data
+ */
+CF_API void CF_CALL cf_mesh_append_attributes(CF_Mesh mesh, const CF_VertexAttribute* attributes, int attribute_count);
+
+/**
+ * @function cf_destroy_mesh
+ * @category graphics
+ * @brief    Frees up a `CF_Mesh` previously created with `cf_make_mesh`.
+ * @param    mesh       The mesh.
+ * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_update_vertex_data
+ */
+CF_API void CF_CALL cf_destroy_mesh(CF_Mesh mesh);
+
+/**
+ * @function cf_mesh_update_vertex_data
+ * @category graphics
+ * @brief    Overwrites the vertex data of a mesh.
+ * @param    mesh       The mesh.
+ * @param    data       A pointer to vertex data.
+ * @param    count      Number of vertices in `data`.
+ * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_update_vertex_data
+ */
+CF_API void CF_CALL cf_mesh_update_vertex_data(CF_Mesh mesh, void* data, int count);
+
+/**
+ * @function cf_mesh_update_index_data
+ * @category graphics
+ * @brief    Overwrites the index data of a mesh.
+ * @param    mesh       The mesh.
+ * @param    data       A pointer to index data.
+ * @param    count      Number of indices in `data`.
+ * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_set_index_buffer
+ */
+CF_API void CF_CALL cf_mesh_update_index_data(CF_Mesh mesh, void* data, int count);
+
+/**
+ * @function cf_mesh_update_instance_data
+ * @category graphics
+ * @brief    Overwrites the instance data of a mesh.
+ * @param    mesh       The mesh.
+ * @param    data       A pointer to instance data.
+ * @param    count      Number of instances in `data`.
+ * @related  CF_Mesh cf_make_mesh cf_destroy_mesh cf_mesh_set_instance_buffer
+ */
+CF_API void CF_CALL cf_mesh_update_instance_data(CF_Mesh mesh, void* data, int count);
+
+//--------------------------------------------------------------------------------------------------
+// Render state.
+
+/**
+ * @enum     CF_CullMode
+ * @category graphics
+ * @brief    Settings to control if triangles are culled in clockwise order, counter-clockwise order, or not at all.
+ * @related  CF_CullMode cf_cull_mode_string CF_RenderState
+ */
+#define CF_CULL_MODE_DEFS \
+	/* @entry No culling at all. */                        \
+	CF_ENUM(CULL_MODE_NONE,  0)                            \
+	/* @entry Cull triangles ordered counter-clockwise. */ \
+	CF_ENUM(CULL_MODE_FRONT, 1)                            \
+	/* @entry Cull triangles ordered clockwise. */         \
+	CF_ENUM(CULL_MODE_BACK,  2)                            \
+	/* @end */
+
+typedef enum CF_CullMode
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_CULL_MODE_DEFS
+	#undef CF_ENUM
+} CF_CullMode;
+
+/**
+ * @function cf_cull_mode_string
+ * @category graphics
+ * @brief    Returns a `CF_CullMode` converted to a C string.
+ * @related  CF_CullMode cf_cull_mode_string CF_RenderState
+ */
+CF_INLINE const char* cf_cull_mode_string(CF_CullMode mode) {
+	switch (mode) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_CULL_MODE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+
+/**
+ * @enum     CF_StencilOp
+ * @category graphics
+ * @brief    Stencil operations. These can happen when passing/failing a stencil test.
+ * @related  CF_StencilOp cf_stencil_op_string CF_StencilFunction
+ */
+#define CF_STENCIL_OP_DEFS \
+	/* @entry Keep. */                     \
+	CF_ENUM(STENCIL_OP_KEEP,            0) \
+	/* @entry Zero. */                     \
+	CF_ENUM(STENCIL_OP_ZERO,            1) \
+	/* @entry Replace. */                  \
+	CF_ENUM(STENCIL_OP_REPLACE,         2) \
+	/* @entry Increment clamp. */          \
+	CF_ENUM(STENCIL_OP_INCREMENT_CLAMP, 3) \
+	/* @entry Decrement clamp. */          \
+	CF_ENUM(STENCIL_OP_DECREMENT_CLAMP, 4) \
+	/* @entry Invert. */                   \
+	CF_ENUM(STENCIL_OP_INVERT,          5) \
+	/* @entry Increment wrap. */           \
+	CF_ENUM(STENCIL_OP_INCREMENT_WRAP,  6) \
+	/* @entry Decrement wrap. */           \
+	CF_ENUM(STENCIL_OP_DECREMENT_WRAP,  7) \
+	/* @end */
+
+typedef enum CF_StencilOp
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_STENCIL_OP_DEFS
+	#undef CF_ENUM
+} CF_StencilOp;
+
+/**
+ * @function cf_stencil_op_string
+ * @category graphics
+ * @brief    Returns a `CF_StencilOp` converted to a C string.
+ * @related  CF_StencilOp cf_stencil_op_string CF_StencilFunction
+ */
+CF_INLINE const char* cf_stencil_op_string(CF_StencilOp op) {
+	switch (op) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_STENCIL_OP_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_BlendOp
+ * @category graphics
+ * @brief    Blend operations between two color components.
+ * @remarks  See `CF_BlendState` for an overview.
+ * @related  CF_BlendOp cf_blend_op_string CF_BlendState
+ */
+#define CF_BLEND_OP_DEFS \
+	/* @entry Add. */                     \
+	CF_ENUM(BLEND_OP_ADD,              0) \
+	/* @entry Subtract, A - B. */         \
+	CF_ENUM(BLEND_OP_SUBTRACT,         1) \
+	/* @entry Reverse subtract, B - A. */ \
+	CF_ENUM(BLEND_OP_REVERSE_SUBTRACT, 2) \
+	/* @entry Minimum value. */           \
+	CF_ENUM(BLEND_OP_MIN,              3) \
+	/* @entry Maximum value. */           \
+	CF_ENUM(BLEND_OP_MAX,              4) \
+	/* @end */
+
+typedef enum CF_BlendOp
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_BLEND_OP_DEFS
+	#undef CF_ENUM
+} CF_BlendOp;
+
+/**
+ * @function cf_blend_op_string
+ * @category graphics
+ * @brief    Returns a `CF_BlendOp` converted to a C string.
+ * @related  CF_BlendOp cf_blend_op_string CF_BlendFactor CF_RenderState
+ */
+CF_INLINE const char* cf_blend_op_string(CF_BlendOp op) {
+	switch (op) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_BLEND_OP_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_BlendFactor
+ * @category graphics
+ * @brief    Blend factors to compose a blend equation.
+ * @remarks  See `CF_BlendState` for an overview.
+ * @related  CF_BlendFactor cf_blend_factor_string CF_BlendState
+ */
+#define CF_BLENDFACTOR_DEFS \
+	/* @entry 0 */                                    \
+	CF_ENUM(BLENDFACTOR_ZERO,                      0) \
+	/* @entry 1 */                                    \
+	CF_ENUM(BLENDFACTOR_ONE,                       1) \
+	/* @entry S.color */                              \
+	CF_ENUM(BLENDFACTOR_SRC_COLOR,                 2) \
+	/* @entry (1 - S.rgb) */                          \
+	CF_ENUM(BLENDFACTOR_ONE_MINUS_SRC_COLOR,       3) \
+	/* @entry D.rgb */                                \
+	CF_ENUM(BLENDFACTOR_DST_COLOR,                 4) \
+	/* @entry (1 - D.rgb) */                          \
+	CF_ENUM(BLENDFACTOR_ONE_MINUS_DST_COLOR,       5) \
+	/* @entry S.alpha */                              \
+	CF_ENUM(BLENDFACTOR_SRC_ALPHA,                 6) \
+	/* @entry (1 - S.alpha) */                        \
+	CF_ENUM(BLENDFACTOR_ONE_MINUS_SRC_ALPHA,       7) \
+	/* @entry D.alpha */                              \
+	CF_ENUM(BLENDFACTOR_DST_ALPHA,                 8) \
+	/* @entry (1 - D.alpha) */                        \
+	CF_ENUM(BLENDFACTOR_ONE_MINUS_DST_ALPHA,       9) \
+	/* @entry C */                                    \
+	CF_ENUM(BLENDFACTOR_CONSTANT_COLOR,           10) \
+	/* @entry (1 - C.rgb) */                          \
+	CF_ENUM(BLENDFACTOR_ONE_MINUS_CONSTANT_COLOR, 11) \
+	/* @entry min(S.alpha, 1 - D.alpha) */            \
+	CF_ENUM(BLENDFACTOR_SRC_ALPHA_SATURATE,       12) \
+	/* @end */
+
+typedef enum CF_BlendFactor
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_BLENDFACTOR_DEFS
+	#undef CF_ENUM
+} CF_BlendFactor;
+
+/**
+ * @function cf_blend_factor_string
+ * @category graphics
+ * @brief    Returns a `CF_BlendFactor` converted to a C string.
+ * @related  CF_BlendFactor cf_blend_factor_string CF_BlendState
+ */
+CF_INLINE const char* cf_blend_factor_string(CF_BlendFactor factor) {
+	switch (factor) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_BLENDFACTOR_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+/**
+ * @enum     CF_PrimitiveType
+ * @category graphics
+ * @brief    Primitive topology used for rendering geometry.
+ * @remarks  Controls how vertex input is interpreted as geometry.
+ * @related  CF_PrimitiveType cf_primitive_type_string
+ */
+#define CF_PRIMITIVE_TYPE_DEFS \
+	/* @entry A series of separate triangles. */       \
+	CF_ENUM(PRIMITIVE_TYPE_TRIANGLELIST,    0)         \
+	/* @entry A series of connected triangles. */      \
+	CF_ENUM(PRIMITIVE_TYPE_TRIANGLESTRIP,   1)         \
+	/* @entry A series of separate lines. */           \
+	CF_ENUM(PRIMITIVE_TYPE_LINELIST,        2)         \
+	/* @entry A series of connected lines. */          \
+	CF_ENUM(PRIMITIVE_TYPE_LINESTRIP,       3)         \
+	/* @end */
+
+typedef enum CF_PrimitiveType
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_PRIMITIVE_TYPE_DEFS
+	#undef CF_ENUM
+} CF_PrimitiveType;
+
+/**
+ * @function cf_primitive_type_string
+ * @category graphics
+ * @brief    Returns a `CF_PrimitiveType` converted to a C string.
+ * @related  CF_PrimitiveType
+ */
+CF_INLINE const char* cf_primitive_type_string(CF_PrimitiveType type) {
+	switch (type) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_PRIMITIVE_TYPE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+
+/**
+ * @struct   CF_StencilFunction
+ * @category graphics
+ * @brief    Defines functions for stencil rendering.
+ * @remarks  The stencil buffer stores references values used for rendering with comparisons. Only comparisons that end up
+ *           logically true pass the stencil test and end up getting drawn. For an overview of stencil testing [learnopengl.com
+ *           has an excellent article](https://learnopengl.com/Advanced-OpenGL/Stencil-testing) on the topic.
+ * @related  CF_StencilFunction CF_StencilParams CF_RenderState cf_material_set_render_state
+ */
+typedef struct CF_StencilFunction
+{
+	/* @member Comparison type for the stencil test. See `CF_CompareFunction`. */
+	CF_CompareFunction compare;
+
+	/* @member An operation to perform upon failing a stencil test. See `CF_StencilOp`. */
+	CF_StencilOp fail_op;
+
+	/* @member An operation to perform upon failing a depth test. See `CF_StencilOp`. */
+	CF_StencilOp depth_fail_op;
+
+	/* @member An operation to perform upon passing a stencil test. See `CF_StencilOp`. */
+	CF_StencilOp pass_op;
+} CF_StencilFunction;
+// @end
+
+/**
+ * @struct   CF_StencilParams
+ * @category graphics
+ * @brief    Settings for the stencil buffer.
+ * @remarks  For an overview of stencil testing [learnopengl.com has an excellent article](https://learnopengl.com/Advanced-OpenGL/Stencil-testing) on the topic.
+ * @related  CF_StencilFunction CF_StencilParams CF_RenderState cf_material_set_render_state
+ */
+typedef struct CF_StencilParams
+{
+	/* @member The stencil buffer will not be used unless this is true. */
+	bool enabled;
+
+	/* @member Used to control which bits get read from the stencil buffer. */
+	uint8_t read_mask;
+
+	/* @member Used to control which bits get written to the stencil buffer. */
+	uint8_t write_mask;
+
+	/* @member After reading from the stencil buffer, the `reference` value is used in a comparison to perform a stencil operation. See `CF_StencilFunction` and `CF_StencilOp`. */
+	uint8_t reference;
+
+	/* @member The stencil function to use for front-facing triangles (counter-clockwise). */
+	CF_StencilFunction front;
+
+	/* @member The stencil function to use for back-facing triangles (clockwise). */
+	CF_StencilFunction back;
+} CF_StencilParams;
+// @end
+
+/**
+ * @struct   CF_BlendState
+ * @category graphics
+ * @brief    Defines how colors are mixed together when the GPU is drawing individual pixels.
+ * @remarks  There are many ways to blend two colors together to create all kinds of different effects. Defining how we draw one thing atop
+ *           another is called "compositing", or "image compositing". The actual operation of mixing two colors together to form a
+ *           a pixel is called blending. We describe blend equations as little math equations.
+ *
+ *           We can say the pixel is called P, while the input colors are S and D (source and destination). Modern GPUs provide some
+ *           common _operators_ for defining blend functions: add, subtract, reverse subtract, min and max (see `CF_BlendOp`). Cute Framework only
+ *           uses add, subtract, and reverse subtract, as min/max are not very cross-platform compatible. On each side of an _operator_ are the
+ *           _factors_ (see `CF_BlendFactor`).
+ *
+ *           Here is the add operator `CF_BLEND_OP_ADD`:
+ *
+ *           P = S + D
+ *
+ *           Recap: P is the pixel to write, S is the source factor, while D is the destination factor. Usually the D (destination factor) is
+ *           the old pixel value, while S (source factor) is a new image getting draw over old pixel contents. Therefore, P is the final color
+ *           after compositing a new image on top of an old image.
+ *
+ *           Blend factors (see `CF_BlendFactor`) are components of a color, including the alpha component. The most common setup for your
+ *           blend state is to use [premultiplied alpha](https://blog.demofox.org/2015/06/19/what-is-pre-multiplied-alpha-and-why-does-it-matter/) when loading your images.
+ *           Cute Framework internally loads up images in premultiplied alpha format for you. Cute Framework's default blend state is to use
+ *           _additive blending_. The blend function looks like this:
+ *
+ *           P = 1 x S + D x (1 - S.alpha)
+ *
+ *           Or re-written with Cute Framework enums:
+ *
+ *           P = S x CF_BLENDFACTOR_ONE CF_BLEND_OP_ADD D x CF_BLENDFACTOR_ONE_MINUS_SRC_ALPHA
+ *
+ *           Which can be setup with this kind of code:
+ *
+ *           ```cpp
+ *           CF_RenderState state = cf_render_state_defaults();
+ *           state.blend.enabled = true;
+ *           state.blend.rgb_src_blend_factor = CF_BLENDFACTOR_ONE;
+ *           state.blend.rgb_dst_blend_factor = CF_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+ *           state.blend.rgb_op = CF_BLEND_OP_ADD;
+ *           state.blend.alpha_src_blend_factor = CF_BLENDFACTOR_ONE;
+ *           state.blend.alpha_dst_blend_factor = CF_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+ *           state.blend.alpha_op = CF_BLEND_OP_ADD;
+ *           cf_material_set_render_state(my_material, state);
+ *           ```
+ *
+ *           You can of course define your own blend state in any way you like to perform all kinds of compositing effects. However, dynamically changing the
+ *           blend state will result in more draw calls to the GPU, which negatively affects performance. A major win for premultiplied alpha and
+ *           additive blending is that some common rendering needs can all be batched together within one draw call, without requiring a change to
+ *           the blend state. One example is rendering additively or with transparency in the same draw call. There are some other benefits that come from
+ *           this style as well. Here are some nice links on the topic.
+ *           - https://developer.nvidia.com/content/alpha-blending-pre-or-not-pre
+ *           - https://shawnhargreaves.com/blog/premultiplied-alpha.html
+ * @related  CF_BlendFactor CF_BlendOp CF_RenderState cf_material_set_render_state
+ */
+typedef struct CF_BlendState
+{
+	/* @member True enables modifying the default blend state. */
+	bool enabled;
+
+	/* @member The pixel format to perform blend operations. This should match the target texture you're rendering to. See `CF_PixelFormat`. */
+	CF_PixelFormat pixel_format;
+
+	/* @member Set to true to blend the red component. */
+	bool write_R_enabled;
+
+	/* @member Set to true to blend the green component. */
+	bool write_G_enabled;
+
+	/* @member Set to true to blend the blue component. */
+	bool write_B_enabled;
+
+	/* @member Set to true to blend the alpha component. */
+	bool write_A_enabled;
+
+	/* @member The blend operator to use for the color components. See `CF_BlendOp`. */
+	CF_BlendOp rgb_op;
+
+	/* @member The factor to use for S in the blend equation for the color components. See remarks for details. */
+	CF_BlendFactor rgb_src_blend_factor;
+
+	/* @member The factor to use for D in the blend equation for the color components. See remarks for details. */
+	CF_BlendFactor rgb_dst_blend_factor;
+
+	/* @member The blend operator to use for the alpha component. See `CF_BlendOp`. */
+	CF_BlendOp alpha_op;
+
+	/* @member The factor to use for S in the blend equation for the alpha component. See remarks for details. */
+	CF_BlendFactor alpha_src_blend_factor;
+
+	/* @member The factor to use for D in the blend equation for the alpha component. See remarks for details. */
+	CF_BlendFactor alpha_dst_blend_factor;
+} CF_BlendState;
+// @end
+
+/**
+ * @struct   CF_RenderState
+ * @category graphics
+ * @brief    A bag of rendering related settings.
+ * @remarks  The `CF_RenderState` is a big collection of various rendering settings, such as culling mode,
+ *           blending operations, depth and stencil settings, etc. Altering these on a material always means
+ *           increasing your draw call count. It's best to try and set these once and leave them alone, though
+ *           this is not always possible.
+ * @related  CF_BlendState CF_CullMode CF_StencilParams cf_material_set_render_state
+ */
+typedef struct CF_RenderState
+{
+	/* @member The type of primitive to draw, as in triangles or lines (triangle list by default). See `CF_PrimitiveType`. */
+	CF_PrimitiveType primitive_type;
+
+	/* @member Controls whether or not to cull triangles based on their winding order. See `CF_CullMode`. */
+	CF_CullMode cull_mode;
+
+	/* @member Controls how the GPU blends pixels together during compositing. `blend` aliases
+	   `blends[0]`, so single-target code reads and writes exactly as before. For a multiple-
+	   render-target canvas, set `blend_count` to the canvas's `target_count` and fill
+	   `blends[1]` onward to give each color target its own blend and write mask -- e.g. a
+	   deferred light-accumulation pass blending additively into target 0 while write-masking
+	   a material target off. See `CF_BlendState`. */
+	union
+	{
+		CF_BlendState blend;
+		CF_BlendState blends[CF_MAX_CANVAS_TARGETS];
+	};
+
+	/* @member How many entries of `blends` are meaningful. Zero or one means every color target
+	   shares `blends[0]` (exactly the old behavior, so zero-initialized state is unchanged).
+	   Per-target blend works on SDL_GPU and WebGPU: the GLES backend has no indexed blend (ES 3.0) and
+	   applies `blends[0]` to every target. */
+	int blend_count;
+
+	/* @member Converts the fragment shader's output alpha into MSAA sample coverage instead of
+	   blending with it. Requires a multisampled canvas. This is how to draw dense thin
+	   geometry -- grass, hair, foliage -- with antialiased edges while still writing depth:
+	   coverage resolves through the samples, so it is order-independent and needs no sorting
+	   and no separate blended pass. Ignored on single-sample canvases and by the GLES backend. */
+	bool alpha_to_coverage;
+
+	/* @member Defines how to perform depth-testing. Depth testing runs when this is anything other
+	   than `CF_COMPARE_FUNCTION_ALWAYS` (the default) or when `depth_write_enabled` is true -- but
+	   only if the canvas has a depth buffer. See `CF_CompareFunction`. */
+	CF_CompareFunction depth_compare;
+
+	/* @member True to write depth values into the depth buffer. This alone does not reject anything:
+	   with the default `depth_compare` of `CF_COMPARE_FUNCTION_ALWAYS` you get a depth buffer that
+	   records but never occludes, so set `depth_compare` (usually `CF_COMPARE_FUNCTION_LESS_THAN`)
+	   as well. Both are ignored unless the canvas was made with `depth_stencil_enable` set to true.
+	   `cf_render_state_3d_defaults` sets all of this up. */
+	bool depth_write_enabled;
+
+	/* @member Sets up how to perform (if at all) stencil testing. See `CF_StencilParams`. */
+	CF_StencilParams stencil;
+
+	/* @member A scalar factor controlling the depth value added to each fragment. */
+	float depth_bias_constant_factor;
+
+	/* @member The maximum depth bias of a fragment. */
+	float depth_bias_clamp;
+
+	/* @member A scalar factor applied to a fragment's slope in depth calculations. */
+	float depth_bias_slope_factor;
+
+	/* @member True to bias fragment depth values. */
+	bool enable_depth_bias;
+
+	/* @member True to enable depth clip, false to enable depth clamp. Clipping discards fragments
+	   outside the near/far planes; clamping keeps them, pinned to the nearest plane, which is how
+	   shadow casters are usually kept from being clipped away. Only implemented on the SDL_GPU
+	   backend, and on WebGPU when the device has depth-clip-control -- GLES has no equivalent of `GL_DEPTH_CLAMP` and silently ignores this. */
+	bool enable_depth_clip;
+} CF_RenderState;
+// @end
+
+/**
+ * @function cf_render_state_defaults
+ * @category graphics
+ * @brief    Returns a good set of default parameters for a `CF_RenderState`.
+ * @related  CF_RenderState cf_render_state_defaults cf_material_set_render_state
+ */
+CF_API CF_RenderState CF_CALL cf_render_state_defaults(void);
+
+/**
+ * @function cf_render_state_3d_defaults
+ * @category graphics
+ * @brief    Returns a `CF_RenderState` set up for rendering 3d geometry.
+ * @return   `cf_render_state_defaults` plus depth writes on, a `CF_COMPARE_FUNCTION_LESS_THAN` depth
+ *           test, and back-face culling.
+ * @remarks  The 2d defaults deliberately leave depth testing off, which for 3d shows up as the far
+ *           side of a model drawing over the near side. This turns it on in one call.
+ *
+ *           **The canvas must have a depth buffer or none of this does anything.** `cf_canvas_defaults`
+ *           leaves `depth_stencil_enable` false, so opt in explicitly:
+ *
+ *           ```c
+ *           CF_CanvasParams params = cf_canvas_defaults(w, h);
+ *           params.depth_stencil_enable = true;
+ *           CF_Canvas canvas = cf_make_canvas(params);
+ *           cf_material_set_render_state(material, cf_render_state_3d_defaults());
+ *           ```
+ *
+ *           The `CF_COMPARE_FUNCTION_LESS_THAN` test assumes the depth buffer clears to 1.0 (the
+ *           default) and that your projection maps the near plane to 0 and the far plane to 1 --
+ *           which is what `cf_perspective` and `cf_ortho` produce. Back-face culling assumes
+ *           counter-clockwise front faces.
+ * @related  CF_RenderState cf_render_state_defaults cf_material_set_render_state CF_CanvasParams cf_perspective
+ */
+CF_API CF_RenderState CF_CALL cf_render_state_3d_defaults(void);
+
+//--------------------------------------------------------------------------------------------------
+// Material.
+
+/**
+ * @enum     CF_UniformType
+ * @category graphics
+ * @brief    The available types of uniforms.
+ * @remarks  A uniform is like a global variable for a shader. We set uniforms by using a `CF_Material`.
+ * @related  CF_UniformType cf_uniform_type_string CF_Material cf_make_material
+ */
+#define CF_UNIFORM_TYPE_DEFS \
+	/* @entry In a shader: `uniform float` */  \
+	CF_ENUM(UNIFORM_TYPE_UNKNOWN, -1)          \
+	/* @entry In a shader: `uniform float` */  \
+	CF_ENUM(UNIFORM_TYPE_FLOAT,    0)          \
+	/* @entry In a shader: `uniform vec2` */   \
+	CF_ENUM(UNIFORM_TYPE_FLOAT2,   1)          \
+	/* @entry In a shader: `uniform vec3` */   \
+	CF_ENUM(UNIFORM_TYPE_FLOAT3,   2)          \
+	/* @entry In a shader: `uniform vec4` */   \
+	CF_ENUM(UNIFORM_TYPE_FLOAT4,   3)          \
+	/* @entry In a shader: `uniform int` */    \
+	CF_ENUM(UNIFORM_TYPE_INT,      4)          \
+	/* @entry In a shader: `uniform int[2]` */ \
+	CF_ENUM(UNIFORM_TYPE_INT2,     5)          \
+	/* @entry In a shader: `uniform int[4]` */ \
+	CF_ENUM(UNIFORM_TYPE_INT4,     6)          \
+	/* @entry In a shader: `uniform mat4` */   \
+	CF_ENUM(UNIFORM_TYPE_MAT4,     7)          \
+	/* @end */
+
+typedef enum CF_UniformType
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_UNIFORM_TYPE_DEFS
+	#undef CF_ENUM
+} CF_UniformType;
+
+/**
+ * @function cf_uniform_type_string
+ * @category graphics
+ * @brief    Returns a `CF_UniformType` converted to a C string.
+ * @related  CF_UniformType cf_uniform_type_string CF_Material cf_make_material
+ */
+CF_INLINE const char* cf_uniform_type_string(CF_UniformType type) {
+	switch (type) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_UNIFORM_TYPE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @function cf_make_material
+ * @category graphics
+ * @brief    Creates a new material.
+ * @remarks  A material holds render state (see `CF_RenderState`), texture inputs (see `CF_Texture`), as well as shader inputs called
+ *           uniforms (see `CF_UniformType`). For an overview see `CF_Material`.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API CF_Material CF_CALL cf_make_material(void);
+
+/**
+ * @function cf_destroy_material
+ * @category graphics
+ * @brief    Frees up a material created by `cf_make_material`.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_destroy_material(CF_Material material);
+
+/**
+ * @function cf_material_set_render_state
+ * @category graphics
+ * @brief    Sets the render state for a material.
+ * @param    material      The material.
+ * @param    render_state  The new render state to set on `material`.
+ * @remarks  See `CF_RenderState` for an overview.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_set_render_state(CF_Material material, CF_RenderState render_state);
+
+/**
+ * @function cf_material_set_texture_vs
+ * @category graphics
+ * @brief    Sets up a texture, used for inputs to vertex shaders.
+ * @param    material      The material.
+ * @param    name          The name of the texture, for referring to within a vertex shader.
+ * @param    texture       Data (usually an image) for a shader to access.
+ * @remarks  See `CF_Texture` and `CF_TextureParams` for an overview.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_set_texture_vs(CF_Material material, const char* name, CF_Texture texture);
+
+/**
+ * @function cf_material_set_texture_fs
+ * @category graphics
+ * @brief    Sets up a texture, used for inputs to fragment shaders.
+ * @param    material      The material.
+ * @param    name          The name of the texture, for referring to within a fragment shader.
+ * @param    texture       Data (usually an image) for a shader to access.
+ * @remarks  See `CF_Texture` and `CF_TextureParams` for an overview.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_set_texture_fs(CF_Material material, const char* name, CF_Texture texture);
+
+/**
+ * @function cf_material_set_texture_vs_sampler
+ * @category graphics
+ * @brief    Binds a texture to the vertex stage, read through a standalone sampler instead of
+ *           the texture's own.
+ * @remarks  The override lives on this material binding only -- other bindings of the same
+ *           texture keep its baked sampler. A zero'd sampler restores the baked one.
+ * @related  CF_Sampler cf_make_sampler cf_material_set_texture_vs cf_material_set_texture_fs_sampler
+ */
+CF_API void CF_CALL cf_material_set_texture_vs_sampler(CF_Material material, const char* name, CF_Texture texture, CF_Sampler sampler);
+
+/**
+ * @function cf_material_set_texture_fs_sampler
+ * @category graphics
+ * @brief    Binds a texture to the fragment stage, read through a standalone sampler.
+ * @remarks  The two-views-of-one-texture tool: bind a depth map once through a comparison
+ *           sampler for PCF and once raw for a blocker search (PCSS), or one image NEAREST
+ *           and LINEAR in different passes. See `cf_material_set_texture_vs_sampler`.
+ * @related  CF_Sampler cf_make_sampler cf_material_set_texture_fs cf_material_set_texture_vs_sampler
+ */
+CF_API void CF_CALL cf_material_set_texture_fs_sampler(CF_Material material, const char* name, CF_Texture texture, CF_Sampler sampler);
+
+/**
+ * @function cf_material_clear_textures
+ * @category graphics
+ * @brief    Clears all textures previously set by `cf_material_set_texture_vs` or `cf_material_set_texture_fs`.
+ * @param    material      The material.
+ * @remarks  See `CF_Texture` and `CF_TextureParams` for an overview.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_clear_textures(CF_Material material);
+
+/**
+ * @function cf_material_set_uniform_vs
+ * @category graphics
+ * @brief    Sets up a uniform value, used for inputs to vertex shaders.
+ * @param    material      The material.
+ * @param    name          The name of the uniform as it appears in the shader.
+ * @param    data          The value of the uniform.
+ * @param    type          The type of the uniform. See `CF_UniformType`.
+ * @param    array_length  The number of elements in the uniform array. Usually this is just `1`, as in, not an array but just one variable.
+ * @remarks  Uniforms set here do not need to exist in the shader. It's completely acceptable (and encouraged) to setup many uniforms in a material.
+ *           Once the material is applied via `cf_apply_shader`, all shader input uniforms (e.g. `uniform vec4 u_my_color`) are dynamically matched up
+ *           with uniform values stored in the `CF_Material`. Any uniforms in the material that don't match up will simply be ignored, and cleared to 0
+ *           in the shader.
+ *
+ *           `CF_Material`'s design supports using one material with various shaders, or using various materials with one shader. Since uniforms are
+ *           grouped up into uniform blocks the performance overhead is usually quite minimal for setting a variety of uniform and shader combinations.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_set_uniform_vs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length);
+
+/**
+ * @function cf_material_set_uniform_fs
+ * @category graphics
+ * @brief    Sets up a uniform value, used for inputs to fragment shaders.
+ * @param    material      The material.
+ * @param    name          The name of the uniform as it appears in the shader.
+ * @param    data          The value of the uniform.
+ * @param    type          The type of the uniform. See `CF_UniformType`.
+ * @param    array_length  The number of elements in the uniform array. Usually this is just `1`, as in, not an array but just one variable.
+ * @remarks  Uniforms set here do not need to exist in the shader. It's completely acceptable (and encouraged) to setup many uniforms in a material.
+ *           Once the material is applied via `cf_apply_shader`, all shader input uniforms (e.g. `uniform vec4 u_my_color`) are dynamically matched up
+ *           with uniform values stored in the `CF_Material`. Any uniforms in the material that don't match up will simply be ignored, and cleared to 0
+ *           in the shader.
+ *
+ *           `CF_Material`'s design supports using one material with various shaders, or using various materials with one shader. Since uniforms are
+ *           grouped up into uniform blocks the performance overhead is usually quite minimal for setting a variety of uniform and shader combinations.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs
+ */
+CF_API void CF_CALL cf_material_set_uniform_fs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length);
+
+/**
+ * @function cf_material_set_texture_cs
+ * @category graphics
+ * @brief    Sets up a sampled texture for the compute shader stage.
+ * @param    material      The material.
+ * @param    name          The name of the texture as it appears in the compute shader.
+ * @param    texture       Data (usually an image) for a shader to access.
+ * @related  CF_Material cf_material_set_uniform_cs cf_dispatch_compute
+ */
+CF_API void CF_CALL cf_material_set_texture_cs(CF_Material material, const char* name, CF_Texture texture);
+
+/**
+ * @function cf_material_set_uniform_cs
+ * @category graphics
+ * @brief    Sets up a uniform value for the compute shader stage.
+ * @param    material      The material.
+ * @param    name          The name of the uniform as it appears in the compute shader.
+ * @param    data          The value of the uniform.
+ * @param    type          The type of the uniform. See `CF_UniformType`.
+ * @param    array_length  The number of elements in the uniform array.
+ * @remarks  Same name-matching behavior as `cf_material_set_uniform_vs`/`cf_material_set_uniform_fs`.
+ * @related  CF_Material cf_material_set_texture_cs cf_dispatch_compute
+ */
+CF_API void CF_CALL cf_material_set_uniform_cs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length);
+
+/**
+ * @function cf_material_clear_uniforms
+ * @category graphics
+ * @brief    Clears any uniforms previously set by `cf_material_set_uniform_vs`, `cf_material_set_uniform_fs`, or `cf_material_set_uniform_cs`.
+ * @param    material      The material.
+ * @related  CF_UniformType CF_Material cf_make_material cf_destroy_material cf_material_set_render_state cf_material_set_texture_vs cf_material_set_texture_fs cf_material_set_uniform_vs cf_material_set_uniform_fs cf_material_set_uniform_cs
+ */
+CF_API void CF_CALL cf_material_clear_uniforms(CF_Material material);
+
+//--------------------------------------------------------------------------------------------------
+// Rendering Functions.
+
+/**
+ * @function cf_clear_color
+ * @category graphics
+ * @brief    Sets the color the app will use to clear the screen/canvases.
+ * @related  cf_clear_depth_stencil
+ */
+CF_API void CF_CALL cf_clear_color(float red, float green, float blue, float alpha);
+
+/**
+ * @function cf_clear_depth_stencil
+ * @category graphics
+ * @brief    Sets the depth/stencil values used when clearing a canvas, if depth/stencil are enabled (see `CF_RenderState`).
+ * @remarks  This will get used when `cf_apply_canvas` or when `cf_app_draw_onto_screen` is called and `clear` parameter is true.
+ * @related  cf_clear_color
+ */
+CF_API void CF_CALL cf_clear_depth_stencil(float depth, uint32_t stencil);
+
+/**
+ * @function cf_apply_canvas
+ * @category graphics
+ * @brief    Sets up which canvas to draw to.
+ * @param    canvas     The canvas to draw to.
+ * @param    clear      Clears the screen to `cf_clear_color` if true.
+ * @related  CF_Canvas cf_clear_color cf_apply_viewport cf_apply_scissor
+ */
+CF_API void CF_CALL cf_apply_canvas(CF_Canvas canvas, bool clear);
+
+/**
+ * @function cf_apply_viewport
+ * @category graphics
+ * @brief    Sets up a viewport to render within.
+ * @param    x          Center of the viewport on the x-axis.
+ * @param    y          Center of the viewport on the y-axis.
+ * @param    w          Width of the viewport in pixels.
+ * @param    h          Height of the viewport in pixels.
+ * @remarks  The viewport is a window on the screen to render within. The canvas will be stretched to fit onto the viewport. You must only call this
+ *           after calling `cf_apply_shader`.
+ * @related  cf_apply_canvas cf_apply_viewport cf_apply_scissor
+ */
+CF_API void CF_CALL cf_apply_viewport(int x, int y, int w, int h);
+
+/**
+ * @function cf_apply_scissor
+ * @category graphics
+ * @brief    Sets up a scissor box to clip rendering within.
+ * @param    x          Center of the scissor box on the x-axis.
+ * @param    y          Center of the scissor box on the y-axis.
+ * @param    w          Width of the scissor box in pixels.
+ * @param    h          Height of the scissor box in pixels.
+ * @remarks  The scissor box is a window on the screen that rendering will be clipped within. Any rendering that occurs outside the
+ *           scissor box will simply be ignored, rendering nothing and leaving the previous pixel contents untouched. You must only call this
+ *           after calling `cf_apply_shader`.
+ * @related  cf_apply_canvas cf_apply_viewport cf_apply_scissor
+ */
+CF_API void CF_CALL cf_apply_scissor(int x, int y, int w, int h);
+
+/**
+ * @function cf_apply_stencil_reference
+ * @category graphics
+ * @brief    Sets the stencil reference value.
+ * @param    reference      The value to set the stencil reference to.
+ * @related  cf_apply_stencil_reference cf_apply_blend_constants cf_apply_canvas cf_apply_viewport cf_apply_scissor
+ */
+CF_API void CF_CALL cf_apply_stencil_reference(int reference);
+
+/**
+ * @function cf_apply_blend_constants
+ * @category graphics
+ * @brief    Sets the blend constant values used for blend modes that reference blend constants.
+ * @param    r      The red blend constant.
+ * @param    g      The green blend constant.
+ * @param    b      The blue blend constant.
+ * @param    a      The alpha blend constant.
+ * @related  cf_apply_stencil_reference cf_apply_blend_constants cf_apply_canvas cf_apply_viewport cf_apply_scissor
+ */
+CF_API void CF_CALL cf_apply_blend_constants(float r, float g, float b, float a);
+
+/**
+ * @function cf_apply_mesh
+ * @category graphics
+ * @brief    Uses a specific mesh for rendering.
+ * @remarks  The mesh contains vertex data, defining the geometry to be rendered. The mesh vertices are sent to the GPU as inputs to
+ *           the vertex shader. See `CF_Mesh` for an overview.
+ * @related  CF_Mesh cf_make_mesh cf_apply_shader cf_draw_elements
+ */
+CF_API void CF_CALL cf_apply_mesh(CF_Mesh mesh);
+
+/**
+ * @function cf_apply_shader
+ * @category graphics
+ * @brief    Uses a specific shader + material combo for rendering.
+ * @remarks  The `CF_Shader` defines how to render a mesh's geometry, set by `cf_apply_mesh`. The `CF_Mesh` holds input geometry to the
+ *           vertex shader. A `CF_Material` defines uniform and texture inputs to the shader.
+ * @related  CF_Mesh cf_make_mesh cf_apply_shader cf_draw_elements
+ */
+CF_API void CF_CALL cf_apply_shader(CF_Shader shader, CF_Material material);
+
+/**
+ * @function cf_draw_elements
+ * @category graphics
+ * @brief    Draws all elements within the last applied mesh.
+ * @related  CF_Mesh cf_make_mesh cf_apply_shader cf_apply_canvas
+ */
+CF_API void CF_CALL cf_draw_elements(void);
+
+/**
+ * @function cf_draw_elements_instanced
+ * @category graphics
+ * @brief    Draws the last applied mesh `instance_count` times in one call, with no
+ *           per-instance vertex buffer.
+ * @param    instance_count   The number of instances to draw.
+ * @remarks  The shader distinguishes instances with `gl_InstanceIndex`, typically indexing
+ *           into a storage buffer bound via `cf_apply_vs_storage_buffers` -- the pull-style
+ *           alternative to `cf_mesh_set_instance_buffer`'s per-instance vertex attributes.
+ * @related  cf_draw_elements cf_apply_vs_storage_buffers cf_mesh_set_instance_buffer
+ */
+CF_API void CF_CALL cf_draw_elements_instanced(int instance_count);
+
+/**
+ * @function cf_draw_elements_range
+ * @category graphics
+ * @brief    Draws a contiguous element range of the last applied mesh.
+ * @param    first_element    The first index (indexed meshes) or first vertex (non-indexed) to draw.
+ * @param    element_count    How many indices or vertices to draw.
+ * @param    instance_count   Instances to draw; pass 0 to inherit the mesh's instance count
+ *                            (or the pending instance-buffer override's), like `cf_draw_elements`.
+ * @remarks  The workhorse for geometry arenas: pack many small meshes into one `CF_Mesh` and
+ *           draw sub-ranges without rebinding anything between draws. There is deliberately no
+ *           base-vertex parameter -- an indexed arena writes indices absolute into the shared
+ *           vertex buffer, which keeps the call portable to GLES3. `cf_draw3d_mesh_range`
+ *           builds on this to batch interleaved sub-mesh draws into one command.
+ * @related  cf_draw_elements cf_draw_elements_instanced cf_draw3d_mesh_range
+ */
+CF_API void CF_CALL cf_draw_elements_range(int first_element, int element_count, int instance_count);
+
+/**
+ * @struct   CF_DrawIndirectArgs
+ * @category graphics
+ * @brief    One non-indexed indirect draw's arguments, as laid out in the args buffer.
+ * @remarks  Write these into a storage buffer (from the CPU or a compute shader) and draw with
+ *           `cf_draw_elements_indirect`. The layout is the GPU-native indirect command layout.
+ * @related  CF_DrawIndexedIndirectArgs cf_draw_elements_indirect CF_StorageBuffer
+ */
+typedef struct CF_DrawIndirectArgs
+{
+	/* @member Vertices to draw per instance. */
+	uint32_t vertex_count;
+	/* @member Instances to draw; the shader sees `gl_InstanceIndex`. */
+	uint32_t instance_count;
+	/* @member Index of the first vertex. */
+	uint32_t first_vertex;
+	/* @member First instance ID. Keep 0 for portability. */
+	uint32_t first_instance;
+} CF_DrawIndirectArgs;
+// @end
+
+/**
+ * @struct   CF_DrawIndexedIndirectArgs
+ * @category graphics
+ * @brief    One indexed indirect draw's arguments, used when the applied mesh has an index buffer.
+ * @related  CF_DrawIndirectArgs cf_draw_elements_indirect CF_StorageBuffer
+ */
+typedef struct CF_DrawIndexedIndirectArgs
+{
+	/* @member Indices to draw per instance. */
+	uint32_t index_count;
+	/* @member Instances to draw. */
+	uint32_t instance_count;
+	/* @member Base index within the index buffer. */
+	uint32_t first_index;
+	/* @member Added to each index before fetching the vertex. */
+	int32_t vertex_offset;
+	/* @member First instance ID. Keep 0 for portability. */
+	uint32_t first_instance;
+} CF_DrawIndexedIndirectArgs;
+// @end
+
+/**
+ * @function cf_draw_elements_indirect
+ * @category graphics
+ * @brief    Draws the applied mesh with arguments read from a GPU buffer instead of the CPU.
+ * @param    args          A storage buffer created with `indirect_drawable`, holding
+ *                         `CF_DrawIndirectArgs` (or `CF_DrawIndexedIndirectArgs` when the mesh
+ *                         has an index buffer) at `offset`.
+ * @param    offset        Byte offset of the first draw's arguments within `args`.
+ * @param    draw_count    How many consecutive argument blocks to draw.
+ * @remarks  Call in place of `cf_draw_elements`, after `cf_apply_shader`. This closes the
+ *           GPU-driven loop: a compute shader culls, compacts, and writes counts into the args
+ *           buffer (`compute_writable` + `indirect_drawable`), and the draw consumes them with
+ *           no CPU readback. Not available on GLES3/WebGL2.
+ * @related  cf_draw_elements CF_DrawIndirectArgs CF_DrawIndexedIndirectArgs cf_make_storage_buffer cf_dispatch_compute
+ */
+CF_API void CF_CALL cf_draw_elements_indirect(CF_StorageBuffer args, int offset, int draw_count);
+
+/**
+ * @function cf_push_gpu_label
+ * @category graphics
+ * @brief    Pushes a named region onto the GPU timeline, visible in RenderDoc/Nsight/PIX.
+ * @param    name   The region's display name in the capture.
+ * @remarks  Purely diagnostic -- no rendering effect. Pop with `cf_pop_gpu_label`. Regions
+ *           nest. No-op on the GLES backend. On WebGPU, a no-op unless the app was made with
+ *           `CF_APP_OPTIONS_GFX_DEBUG_BIT`: there each region costs calls into the browser, and the draw API
+ *           labels every batch.
+ * @related  cf_pop_gpu_label
+ */
+CF_API void CF_CALL cf_push_gpu_label(const char* name);
+
+/**
+ * @function cf_pop_gpu_label
+ * @category graphics
+ * @brief    Pops the last region pushed by `cf_push_gpu_label`.
+ * @related  cf_push_gpu_label
+ */
+CF_API void CF_CALL cf_pop_gpu_label(void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
+//--------------------------------------------------------------------------------------------------
+// C++ API
+
+#ifdef CF_CPP
+
+namespace Cute
+{
+
+CF_INLINE void apply_vs_storage_buffers(CF_StorageBuffer* buffers, int count) { cf_apply_vs_storage_buffers(buffers, count); }
+CF_INLINE void apply_fs_storage_buffers(CF_StorageBuffer* buffers, int count) { cf_apply_fs_storage_buffers(buffers, count); }
+CF_INLINE void draw_elements_instanced(int instance_count) { cf_draw_elements_instanced(instance_count); }
+CF_INLINE void draw_elements_range(int first_element, int element_count, int instance_count = 0) { cf_draw_elements_range(first_element, element_count, instance_count); }
+CF_INLINE void draw_elements_indirect(CF_StorageBuffer args, int offset, int draw_count) { cf_draw_elements_indirect(args, offset, draw_count); }
+CF_INLINE void push_gpu_label(const char* name) { cf_push_gpu_label(name); }
+CF_INLINE void pop_gpu_label() { cf_pop_gpu_label(); }
+CF_INLINE bool texture_supports_format(CF_PixelFormat format, CF_TextureUsageBits usage) { return cf_texture_supports_format(format, usage); }
+CF_INLINE void clear_color(float r, float b, float g, float a) { cf_clear_color(r, g, b, a); }
+CF_INLINE void clear_color(CF_Color color) { cf_clear_color(color.r, color.g, color.b, color.a); }
+CF_INLINE CF_BackendType query_backend() { return cf_query_backend(); }
+CF_INLINE CF_TextureParams texture_defaults(int w, int h) { return cf_texture_defaults(w, h); }
+CF_INLINE CF_Texture make_texture(CF_TextureParams texture_params) { return cf_make_texture(texture_params); }
+CF_INLINE void destroy_texture(CF_Texture texture) { cf_destroy_texture(texture); }
+CF_INLINE void texture_update(CF_Texture texture, void* data, int size) { cf_texture_update(texture, data, size); }
+CF_INLINE void texture_update_layer_mip(CF_Texture texture, void* data, int size, int layer, int mip_level) { cf_texture_update_layer_mip(texture, data, size, layer, mip_level); }
+CF_INLINE CF_Texture make_texture_from_dds(const char* virtual_path) { return cf_make_texture_from_dds(virtual_path); }
+CF_INLINE CF_Texture make_texture_from_dds_mem(const void* data, int size) { return cf_make_texture_from_dds_mem(data, size); }
+CF_INLINE CF_SamplerParams sampler_defaults() { return cf_sampler_defaults(); }
+CF_INLINE CF_Sampler make_sampler(CF_SamplerParams params) { return cf_make_sampler(params); }
+CF_INLINE void destroy_sampler(CF_Sampler sampler) { cf_destroy_sampler(sampler); }
+CF_INLINE void material_set_texture_vs_sampler(CF_Material material, const char* name, CF_Texture texture, CF_Sampler sampler) { cf_material_set_texture_vs_sampler(material, name, texture, sampler); }
+CF_INLINE void material_set_texture_fs_sampler(CF_Material material, const char* name, CF_Texture texture, CF_Sampler sampler) { cf_material_set_texture_fs_sampler(material, name, texture, sampler); }
+CF_INLINE CF_Shader make_shader(const char* vertex, const char* fragment) { return cf_make_shader(vertex, fragment); }
+CF_INLINE void shader_directory(const char* path) { cf_shader_directory(path); }
+CF_INLINE void shader_on_changed(void (*on_changed_fn)(const char* path, void* udata), void* udata) { cf_shader_on_changed(on_changed_fn, udata); }
+CF_INLINE const char* shader_compile_error() { return cf_shader_compile_error(); }
+CF_INLINE void shader_on_error(void (*on_error_fn)(const char* error_message, void* udata), void* udata) { cf_shader_on_error(on_error_fn, udata); }
+CF_INLINE CF_Shader make_shader_from_source(const char* vertex_src, const char* fragment_src) { return cf_make_shader_from_source(vertex_src, fragment_src); }
+CF_INLINE CF_ShaderBytecode compile_shader_to_bytecode(const char* shader_src, CF_ShaderStage stage) { return cf_compile_shader_to_bytecode(shader_src, stage); }
+CF_INLINE void free_shader_bytecode(CF_ShaderBytecode bytecode) { return cf_free_shader_bytecode(bytecode); }
+CF_INLINE CF_Shader make_shader_from_bytecode(CF_ShaderBytecode vertex_bytecode, CF_ShaderBytecode fragment_bytecode) { return cf_make_shader_from_bytecode(vertex_bytecode, fragment_bytecode); }
+CF_INLINE void destroy_shader(CF_Shader shader) { cf_destroy_shader(shader); }
+CF_INLINE CF_CanvasParams canvas_defaults(int w, int h) { return cf_canvas_defaults(w, h); }
+CF_INLINE CF_Canvas make_canvas(CF_CanvasParams pass_params) { return cf_make_canvas(pass_params); }
+CF_INLINE void destroy_canvas(CF_Canvas canvas) { cf_destroy_canvas(canvas); }
+CF_INLINE CF_Texture canvas_get_target(CF_Canvas canvas) { return cf_canvas_get_target(canvas); }
+CF_INLINE CF_Texture canvas_get_target2(CF_Canvas canvas, int index) { return cf_canvas_get_target2(canvas, index); }
+CF_INLINE CF_Texture canvas_get_depth_stencil_target(CF_Canvas canvas) { return cf_canvas_get_depth_stencil_target(canvas); }
+CF_INLINE void canvas_copy_depth(CF_Canvas dst, CF_Canvas src) { cf_canvas_copy_depth(dst, src); }
+CF_INLINE void clear_canvas(CF_Canvas canvas) { cf_clear_canvas(canvas); }
+CF_INLINE void canvas_set_clear_color(CF_Canvas canvas, CF_Color color) { cf_canvas_set_clear_color(canvas, color); }
+CF_INLINE void canvas_set_clear_color2(CF_Canvas canvas, int index, CF_Color color) { cf_canvas_set_clear_color2(canvas, index, color); }
+CF_INLINE void canvas_get_size(CF_Canvas canvas, int* w, int* h) { cf_canvas_get_size(canvas, w, h); }
+CF_INLINE void canvas_set_clear_depth_stencil(CF_Canvas canvas, float depth, uint32_t stencil) { cf_canvas_set_clear_depth_stencil(canvas, depth, stencil); }
+CF_INLINE CF_Readback canvas_readback(CF_Canvas canvas) { return cf_canvas_readback(canvas); }
+CF_INLINE CF_Readback canvas_readback2(CF_Canvas canvas, int index) { return cf_canvas_readback2(canvas, index); }
+CF_INLINE bool readback_ready(CF_Readback readback) { return cf_readback_ready(readback); }
+CF_INLINE int readback_data(CF_Readback readback, void* data, int size) { return cf_readback_data(readback, data, size); }
+CF_INLINE int readback_size(CF_Readback readback) { return cf_readback_size(readback); }
+CF_INLINE void destroy_readback(CF_Readback readback) { cf_destroy_readback(readback); }
+CF_INLINE CF_Mesh make_mesh(int vertex_buffer_size_in_bytes, const CF_VertexAttribute* attributes, int attribute_count, int vertex_stride) { return cf_make_mesh(vertex_buffer_size_in_bytes, attributes, attribute_count, vertex_stride); }
+CF_INLINE void destroy_mesh(CF_Mesh mesh) { cf_destroy_mesh(mesh); }
+CF_INLINE void mesh_update_vertex_data(CF_Mesh mesh, void* data, int count) { cf_mesh_update_vertex_data(mesh, data, count); }
+CF_INLINE void mesh_update_index_data(CF_Mesh mesh, void* data, int count) { cf_mesh_update_index_data(mesh, data, count); }
+CF_INLINE void mesh_update_instance_data(CF_Mesh mesh, void* data, int count) { cf_mesh_update_instance_data(mesh, data, count); }
+CF_INLINE CF_RenderState render_state_defaults() { return cf_render_state_defaults(); }
+CF_INLINE CF_RenderState render_state_3d_defaults() { return cf_render_state_3d_defaults(); }
+CF_INLINE CF_Material make_material() { return cf_make_material(); }
+CF_INLINE void destroy_material(CF_Material material) { cf_destroy_material(material); }
+CF_INLINE void material_set_render_state(CF_Material material, CF_RenderState render_state) { cf_material_set_render_state(material, render_state); }
+CF_INLINE void material_set_texture_vs(CF_Material material, const char* name, CF_Texture texture) { cf_material_set_texture_vs(material, name, texture); }
+CF_INLINE void material_set_texture_fs(CF_Material material, const char* name, CF_Texture texture) { cf_material_set_texture_fs(material, name, texture); }
+CF_INLINE void material_clear_textures(CF_Material material) { cf_material_clear_textures(material); }
+CF_INLINE void material_set_uniform_vs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_vs(material, name, data, type, array_length); }
+CF_INLINE void material_set_uniform_fs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_fs(material, name, data, type, array_length); }
+CF_INLINE void material_set_texture_cs(CF_Material material, const char* name, CF_Texture texture) { cf_material_set_texture_cs(material, name, texture); }
+CF_INLINE void material_set_uniform_cs(CF_Material material, const char* name, void* data, CF_UniformType type, int array_length) { cf_material_set_uniform_cs(material, name, data, type, array_length); }
+CF_INLINE void material_clear_uniforms(CF_Material material) { cf_material_clear_uniforms(material); }
+CF_INLINE void apply_canvas(CF_Canvas canvas, bool clear = false) { cf_apply_canvas(canvas, clear); }
+CF_INLINE void apply_viewport(int x, int y, int w, int h) { cf_apply_viewport(x, y, w, h); }
+CF_INLINE void apply_scissor(int x, int y, int w, int h) { cf_apply_scissor(x, y, w, h); }
+CF_INLINE void apply_mesh(CF_Mesh mesh) { cf_apply_mesh(mesh); }
+CF_INLINE void apply_shader(CF_Shader shader, CF_Material material) { cf_apply_shader(shader, material); }
+CF_INLINE void draw_elements() { cf_draw_elements(); }
+CF_INLINE bool query_pixel_format(CF_PixelFormat format, CF_PixelFormatOp op) { return cf_query_pixel_format(format, op); }
+CF_INLINE int query_max_canvas_targets() { return cf_query_max_canvas_targets(); }
+CF_INLINE void texture_update_mip(CF_Texture texture, void* data, int size, int mip_level) { cf_texture_update_mip(texture, data, size, mip_level); }
+CF_INLINE void texture_update_layer(CF_Texture texture, void* data, int size, int layer) { cf_texture_update_layer(texture, data, size, layer); }
+CF_INLINE void generate_mipmaps(CF_Texture texture) { cf_generate_mipmaps(texture); }
+CF_INLINE void gpu_sync() { cf_gpu_sync(); }
+CF_INLINE void gpu_submit() { cf_gpu_submit(); }
+CF_INLINE uint64_t texture_handle(CF_Texture texture) { return cf_texture_handle(texture); }
+CF_INLINE uint64_t texture_binding_handle(CF_Texture texture) { return cf_texture_binding_handle(texture); }
+CF_INLINE void mesh_set_index_buffer(CF_Mesh mesh, int index_buffer_size_in_bytes, int index_bit_count) { cf_mesh_set_index_buffer(mesh, index_buffer_size_in_bytes, index_bit_count); }
+CF_INLINE void mesh_set_instance_buffer(CF_Mesh mesh, int instance_buffer_size_in_bytes, int instance_stride) { cf_mesh_set_instance_buffer(mesh, instance_buffer_size_in_bytes, instance_stride); }
+CF_INLINE void mesh_append_attributes(CF_Mesh mesh, const CF_VertexAttribute* attributes, int attribute_count) { cf_mesh_append_attributes(mesh, attributes, attribute_count); }
+CF_INLINE void clear_depth_stencil(float depth, uint32_t stencil) { cf_clear_depth_stencil(depth, stencil); }
+CF_INLINE void apply_stencil_reference(int reference) { cf_apply_stencil_reference(reference); }
+CF_INLINE void apply_blend_constants(float r, float g, float b, float a) { cf_apply_blend_constants(r, g, b, a); }
+CF_INLINE CF_ComputeShader make_compute_shader(const char* path) { return cf_make_compute_shader(path); }
+CF_INLINE CF_ComputeShader make_compute_shader_from_source(const char* src) { return cf_make_compute_shader_from_source(src); }
+CF_INLINE CF_ComputeShader make_compute_shader_from_bytecode(CF_ShaderBytecode bytecode) { return cf_make_compute_shader_from_bytecode(bytecode); }
+CF_INLINE void destroy_compute_shader(CF_ComputeShader shader) { cf_destroy_compute_shader(shader); }
+CF_INLINE CF_StorageBufferParams storage_buffer_defaults(int size) { return cf_storage_buffer_defaults(size); }
+CF_INLINE CF_StorageBuffer make_storage_buffer(CF_StorageBufferParams params) { return cf_make_storage_buffer(params); }
+CF_INLINE void update_storage_buffer(CF_StorageBuffer buffer, const void* data, int size) { cf_update_storage_buffer(buffer, data, size); }
+CF_INLINE void destroy_storage_buffer(CF_StorageBuffer buffer) { cf_destroy_storage_buffer(buffer); }
+CF_INLINE CF_ComputeDispatch compute_dispatch_defaults(int gx, int gy, int gz) { return cf_compute_dispatch_defaults(gx, gy, gz); }
+CF_INLINE void dispatch_compute(CF_ComputeShader shader, CF_Material material, CF_ComputeDispatch dispatch) { cf_dispatch_compute(shader, material, dispatch); }
+
+}
+
+CF_INLINE bool operator==(const CF_RenderState& a, const CF_RenderState& b) { return !CF_MEMCMP(&a, &b, sizeof(a)); }
+CF_INLINE bool operator==(CF_Shader a, CF_Shader b) { return a.id == b.id; }
+
+#endif // CF_CPP
+
+#endif // CF_GRAPHICS_H

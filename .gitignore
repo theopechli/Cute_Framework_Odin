@@ -1,5 +1,7 @@
-build/
+bin
 *.lib
 *.dll
 *.a
 *.so*
+*.ini
+*.log

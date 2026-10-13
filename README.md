@@ -2,13 +2,13 @@
 
 [Odin](https://odin-lang.org) bindings for [Cute Framework](https://github.com/RandyGaul/cute_framework).
 
-## Example App
+## Game
 
-There is a very simple example app inside the `src` folder.
+There is a very simple game inside the `src` folder.
 
 ### Note
 
-In order to use [ImGui](https://github.com/ocornut/imgui), you need bindings for [dear_bindings](https://github.com/dearimgui/dear_bindings). The bindings in `./libs/imgui` are from [odin-imgui](https://gitlab.com/L-4/odin-imgui), with slight modifications, and are only there to run this example app.
+In order to use [ImGui](https://github.com/ocornut/imgui), you need bindings for [dear_bindings](https://github.com/dearimgui/dear_bindings). The bindings in `./libs/imgui` are from [odin-imgui](https://gitlab.com/L-4/odin-imgui), with slight modifications, and are only there to run this game.
 
 ## Clone
 
@@ -26,8 +26,10 @@ git submodule update --init --recursive
 
 ## Prerequisites:
 
+- Odin
+- GCC
 - CMake
-- Python
+- Emscripten
 
 ## Build
 
@@ -35,12 +37,12 @@ Execute any of the following commands from the root of the repository.
 
 ### Linux
 
-1. Run `./setup.sh` to generate the libraries needed to build and run the above example app.
-1. Run `./build_debug.sh` to build the app.
-1. Run `./run_debug.sh` to run the app.
+There is a `build.sh` bash script that builds CF and the game for the desktop
+and the web. Run `build.sh help` or look at the script to learn how to use it.
 
-### Windows
+1. Build: `./build.sh`
+1. Run: `./bin/desktop/debug/game`
 
-1. Run `.\setup.bat` to generate the libraries needed to build and run the above example app.
-1. Run `.\build_debug.bat` to build the app.
-1. Run `.\run_debug.bat` to run the app.
+## Credits
+
+Certain parts of the game were taken from [Karl Zylinski's Odin Raylib Web template](https://github.com/karl-zylinski/odin-raylib-web), for example setting up the Emscripten allocator and logger.

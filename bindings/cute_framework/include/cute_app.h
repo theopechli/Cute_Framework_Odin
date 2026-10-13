@@ -1,0 +1,1032 @@
+/*
+	Cute Framework
+	Copyright (C) 2024 Randy Gaul https://randygaul.github.io/
+
+	This software is dual-licensed with zlib or Unlicense, check LICENSE.txt for more info
+*/
+
+#ifndef CF_APP_H
+#define CF_APP_H
+
+#include "cute_user_config.h"
+#include "cute_defines.h"
+#include "cute_result.h"
+#include "cute_graphics.h"
+#include "cute_time.h"
+
+//--------------------------------------------------------------------------------------------------
+// C API
+
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+/**
+ * @enum     Display Orientation
+ * @category app
+ * @brief    Represents the orientation style of a display.
+ * @related  cf_make_app cf_display_orientation
+ */
+#define CF_DISPLAY_ORIENTATION_DEFS \
+	/* @entry An unknown orientation. */               \
+	CF_ENUM(DISPLAY_ORIENTATION_UNKNOWN,           0)  \
+	/* @entry Landscape orientation. */                \
+	CF_ENUM(DISPLAY_ORIENTATION_LANDSCAPE,         1)  \
+	/* @entry Landscape orientation (upside down). */  \
+	CF_ENUM(DISPLAY_ORIENTATION_LANDSCAPE_FLIPPED, 2)  \
+	/* @entry Portrait orientation. */                 \
+	CF_ENUM(DISPLAY_ORIENTATION_PORTRAIT,          3)  \
+	/* @entry Portrait orientation (upside down). */   \
+	CF_ENUM(DISPLAY_ORIENTATION_PORTRAIT_FLIPPED,  4)  \
+	/* @end */
+
+typedef enum CF_DisplayOrientation
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_DISPLAY_ORIENTATION_DEFS
+	#undef CF_ENUM
+} CF_DisplayOrientation;
+
+typedef uint32_t CF_DisplayID;
+
+/**
+ * @function cf_default_display
+ * @category app
+ * @brief    Returns the default display ID for the primary monitor.
+ * @related  cf_default_display cf_display_count cf_get_display_list cf_free_display_list
+ */
+CF_API CF_DisplayID CF_CALL cf_default_display(void);
+
+/**
+ * @function cf_display_count
+ * @category app
+ * @brief    Returns the number of displays on the system.
+ * @remarks  Indices >= 0 and < the return value are valid display indices.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API int CF_CALL cf_display_count(void);
+
+/**
+ * @function cf_get_display_list
+ * @category app
+ * @brief    Returns a dynamic array of all available display IDs. Free with `cf_free_display_list`.
+ * @related  cf_default_display cf_display_count cf_get_display_list cf_free_display_list
+ */
+CF_API CF_DisplayID* CF_CALL cf_get_display_list(void);
+
+/**
+ * @function cf_free_display_list
+ * @category app
+ * @brief    Frees the display list returned by `cf_get_display_list`.
+ * @related  cf_default_display cf_display_count cf_get_display_list cf_free_display_list
+ */
+CF_API void CF_CALL cf_free_display_list(CF_DisplayID* display_list);
+
+/**
+ * @function cf_display_x
+ * @category app
+ * @brief    Returns the x position, in pixels, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @remarks  Display positions are in a global space, so different displays have different but unique coordinates.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API int CF_CALL cf_display_x(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_y
+ * @category app
+ * @brief    Returns the y position, in pixels, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @remarks  Display positions are in a global space, so different displays have different but unique coordinates.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API int CF_CALL cf_display_y(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_width
+ * @category app
+ * @brief    Returns the width, in pixels, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API int CF_CALL cf_display_width(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_height
+ * @category app
+ * @brief    Returns the height, in pixels, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API int CF_CALL cf_display_height(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_refresh_rate
+ * @category app
+ * @brief    Returns the refresh rate, in hz, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API float CF_CALL cf_display_refresh_rate(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_bounds
+ * @category app
+ * @brief    Returns the bounds, in pixels, of the display.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API CF_Rect CF_CALL cf_display_bounds(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_name
+ * @category app
+ * @brief    Returns the name of the display, or `NULL` on failure (e.g. an invalid display id).
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API const char* CF_CALL cf_display_name(CF_DisplayID display_id);
+
+/**
+ * @function cf_display_orientation
+ * @category app
+ * @brief    Returns the orientation.
+ * @param    display_id    The id of the display. See `cf_get_display_list`.
+ * @related  cf_make_app cf_display_count cf_display_x cf_display_y cf_display_width cf_display_height cf_display_refresh_rate cf_display_bounds cf_display_name cf_display_orientation
+ */
+CF_API CF_DisplayOrientation CF_CALL cf_display_orientation(CF_DisplayID display_id);
+
+/**
+ * @enum     CF_AppOptionFlagBits
+ * @category app
+ * @brief    Various options to control how the application starts up, such as fullscreen, or selecting a graphics backend.
+ * @example > Creating a basic window and immediately destroying it.
+ *     #include <cute.h>
+ *     using namespace cute;
+ *     
+ *     int main(int argc, const char** argv)
+ *     {
+ *         app_make("Fancy Window Title", 0, 0, 0, 640, 480, CF_APP_OPTIONS_WINDOW_POS_CENTERED_BIT, argv[0]);
+ *         app_destroy();
+ *         return 0;
+ *     }
+ * @remarks  The `app_options` parameter of `cf_make_app` is a bitmask flag. Simply take the `CF_APP_OPTIONS_*` flags listed above and OR them together.
+ * @related  CF_AppOptionFlagBits cf_make_app cf_destroy_app
+ */
+#define CF_APP_OPTION_DEFS \
+	/* @entry Does not initialize any graphics backend at all (for servers or headless mode). */ \
+	CF_ENUM(APP_OPTIONS_NO_GFX_BIT,                             1 << 0)  \
+	/* @entry Starts the application in borderless full-screen mode. */  \
+	CF_ENUM(APP_OPTIONS_FULLSCREEN_BIT,                         1 << 1)  \
+	/* @entry Allows the window to be resized. */                        \
+	CF_ENUM(APP_OPTIONS_RESIZABLE_BIT,                          1 << 2)  \
+	/* @entry Starts the application with the window hidden. */          \
+	CF_ENUM(APP_OPTIONS_HIDDEN_BIT,                             1 << 3)  \
+	/* @entry Starts the application with the window centered on the screen. Does not affect any later adjustments to window size/position. */ \
+	CF_ENUM(APP_OPTIONS_WINDOW_POS_CENTERED_BIT,                1 << 4)  \
+	/* @entry Disables automatically mounting the folder the executable runs from to "/". See `cf_fs_mount` for more details. */ \
+	CF_ENUM(APP_OPTIONS_FILE_SYSTEM_DONT_DEFAULT_MOUNT_BIT,     1 << 5)  \
+	/* @entry Starts the application with no audio. */                   \
+	CF_ENUM(APP_OPTIONS_NO_AUDIO_BIT,                           1 << 6)  \
+	/* @entry Starts the application with a D3D11 backend. */            \
+	CF_ENUM(APP_OPTIONS_GFX_D3D11_BIT,                          1 << 7)  \
+	/* @entry Starts the application with a D3D12 backend. */            \
+	CF_ENUM(APP_OPTIONS_GFX_D3D12_BIT,                          1 << 8)  \
+	/* @entry Starts the application with a Metal backend. */            \
+	CF_ENUM(APP_OPTIONS_GFX_METAL_BIT,                          1 << 9)  \
+	/* @entry Starts the application with a Vulkan backend. */           \
+	CF_ENUM(APP_OPTIONS_GFX_VULKAN_BIT,                         1 << 10) \
+	/* @entry Starts the application with an OpenGL backend. */ \
+	CF_ENUM(APP_OPTIONS_GFX_OPENGL_BIT,                       1 << 11) \
+	/* @entry Starts the application with a debug mode graphics context. */ \
+	CF_ENUM(APP_OPTIONS_GFX_DEBUG_BIT,                          1 << 12) \
+	/* @entry Disables the OS's high-pixel-density (Retina/HiDPI) backbuffer, forcing 1:1 logical-to-physical rendering. `cf_app_get_pixel_scale` will always return 1.0f. */ \
+	CF_ENUM(APP_OPTIONS_NO_HIGH_DPI_BIT,                        1 << 13) \
+	/* @entry Starts the application with a WebGPU backend. It needs CF built with the CF_WEBGPU CMake option (`cf_make_app` returns an error otherwise) and is meant for desktop testing; it does nothing on the web, where a CF_WEBGPU build picks WebGPU automatically. */ \
+	CF_ENUM(APP_OPTIONS_GFX_WEBGPU_BIT,                         1 << 14) \
+	/* @end */
+
+typedef int CF_AppOptionFlags;
+
+typedef enum CF_AppOptionFlagBits
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_APP_OPTION_DEFS
+	#undef CF_ENUM
+} CF_AppOptionFlagBits;
+
+/**
+ * @function cf_make_app
+ * @category app
+ * @brief    Use this function to construct an instance of your application window and (optionally) initialize graphics.
+ * @param    window_title  The title of the window in utf8 encoding.
+ * @param    display_index The index of the display to spawn upon. Set this to zero for the primary display. See `cf_get_display_list`.
+ * @param    x             The x position of the window.
+ * @param    y             The y position of the window.
+ * @param    w             The width of the window in points (see `cf_app_get_pixel_scale`; a point is a pixel unless the OS clusters pixels).
+ * @param    h             The height of the window in points.
+ * @param    options       0 by default; a bitmask of `app_options` flags.
+ * @param    argv0         The first argument passed to your main function in the `argv` parameter.
+ * @return   Returns any errors on failure as a `CF_Result`.
+ * @example > Creating a basic 640x480 window for your game.
+ *     #include <cute.h>
+ *     using namespace cute;
+ *     
+ *     int main(int argc, const char** argv)
+ *     {
+ *         // Create a window with a resolution of 640 x 480, along with a DirectX 11 context.
+ *         app_make("Fancy Window Title", 0, 50, 50, 640, 480, CF_APP_OPTIONS_RESIZABLE_BIT, argv[0]);
+ *         
+ *         while (app_is_running())
+ *         {
+ *             app_update();
+ *             // All your game logic and updates go here...
+ *             app_draw_onto_screen();
+ *         }
+ *         
+ *         app_destroy();
+ *         
+ *         return 0;
+ *     }
+ * @remarks  The options parameter is an enum from `app_options`. Different options can be OR'd together.
+ *           Parameters `w` and `h` are ignored if the window is initialized to fullscreen mode with `CF_APP_OPTIONS_FULLSCREEN_BIT`.
+ * @related  CF_AppOptionFlagBits cf_app_is_running cf_app_signal_shutdown cf_destroy_app
+ */
+CF_API CF_Result CF_CALL cf_make_app(const char* window_title, CF_DisplayID display_id, int x, int y, int w, int h, CF_AppOptionFlags options, const char* argv0);
+
+/**
+ * @function cf_destroy_app
+ * @category app
+ * @brief    Cleans up all resources used by the application. Call `cf_app_signal_shutdown` first.
+ * @related  cf_make_app cf_app_is_running cf_app_signal_shutdown
+ */
+CF_API void CF_CALL cf_destroy_app(void);
+
+/**
+ * @function cf_app_is_running
+ * @category app
+ * @brief    Returns true while the app should keep running. Call this as your main loop condition.
+ * @return   Returns true if the application should continue running.
+ * @example > Creating a basic 640x480 window for your game.
+ *     #include <cute.h>
+ *     using namespace cute;
+ *     
+ *     int main(int argc, const char** argv)
+ *     {
+ *         // Create a window with a resolution of 640 x 480, along with a DirectX 11 context.
+ *         app_make("Fancy Window Title", 0, 50, 50, 640, 480, CF_APP_OPTIONS_GFX_D3D11_BIT, argv[0]);
+ *         
+ *         while (app_is_running())
+ *         {
+ *             app_update();
+ *             // All your game logic and updates go here...
+ *             app_draw_onto_screen();
+ *         }
+ *         
+ *         app_destroy();
+ *         
+ *         return 0;
+ *     }
+ * @remarks  Some OS events, like clicking the red X on the app, will signal the app should shutdown.
+ *           This will cause this function to return false. You may manually call `cf_app_signal_shutdown`
+ *           to signal a shutdown.
+ * @related  cf_make_app cf_destroy_app cf_app_signal_shutdown
+ */
+CF_API bool CF_CALL cf_app_is_running(void);
+
+/**
+ * @function cf_app_signal_shutdown
+ * @category app
+ * @brief    Call this to end your main-loop; makes `cf_app_is_running` return false.
+ * @example > Creating a basic 640x480 window for your game.
+ *     #include <cute.h>
+ *     using namespace cute;
+ *     
+ *     int main(int argc, const char** argv)
+ *     {
+ *         // Create a window with a resolution of 640 x 480, along with a DirectX 11 context.
+ *         app_make("Fancy Window Title", 0, 50, 50, 640, 480, CF_APP_OPTIONS_GFX_D3D11_BIT, argv[0]);
+ *         
+ *         while (app_is_running())
+ *         {
+ *             app_update();
+ *             // All your game logic and updates go here...
+ *             if (my_game_should_quit()) {
+ *                 // The next call to app_is_running() will return false.
+ *                 cf_app_signal_shutdown();
+ *             }
+ *             app_draw_onto_screen();
+ *         }
+ *         
+ *         app_destroy();
+ *         
+ *         return 0;
+ *     }
+ * @related  cf_make_app cf_destroy_app cf_app_is_running
+ */
+CF_API void CF_CALL cf_app_signal_shutdown(void);
+
+/**
+ * @function cf_app_update
+ * @category app
+ * @brief    Updates the application. Must be called once per frame, at the beginning of the frame.
+ * @param    on_update  Called for each update tick.
+ * @related  cf_make_app cf_app_is_running cf_app_signal_shutdown cf_destroy_app
+ */
+CF_API void CF_CALL cf_app_update(CF_OnUpdateFn* on_update);
+
+union SDL_Event;
+
+/**
+ * @function cf_app_push_event
+ * @category app
+ * @brief    Queues an SDL event for the app to process on the next update tick.
+ * @param    sdl_event  Pointer to an `SDL_Event`.
+ *           The event is copied into an internal queue.
+ * @remarks  This is only needed when using SDL's main callbacks ([`SDL_MAIN_USE_CALLBACKS`](https://wiki.libsdl.org/SDL3/SDL_MAIN_USE_CALLBACKS)).
+ *
+ *           Every event received in `SDL_AppEvent` should be forwarded here.
+ *           Queued events are still handled the same way as a traditional main loop: at `cf_app_update`.
+ * @related  cf_app_update
+ */
+CF_API void CF_CALL cf_app_push_event(const union SDL_Event* sdl_event);
+
+/**
+ * @function cf_app_draw_onto_screen
+ * @category app
+ * @brief    Draws the app onto the screen.
+ * @return   Returns the number of draw calls for this frame.
+ * @example > Creating a basic 640x480 window for your game.
+ *     #include <cute.h>
+ *     using namespace cute;
+ *     
+ *     int main(int argc, const char** argv)
+ *     {
+ *         // Create a window with a resolution of 640 x 480, along with a DirectX 11 context.
+ *         app_make("Fancy Window Title", 0, 50, 50, 640, 480, CF_APP_OPTIONS_GFX_D3D11_BIT, argv[0]);
+ *         
+ *         while (app_is_running())
+ *         {
+ *             app_update();
+ *             // All your game logic and updates go here...
+ *             app_draw_onto_screen();
+ *         }
+ *         
+ *         app_destroy();
+ *         
+ *         return 0;
+ *     }
+ * @remarks  Call this at the *end* of your main loop. You may only call this function once per game tick.
+ * @related  cf_make_app cf_app_is_running cf_app_signal_shutdown cf_destroy_app
+ */
+CF_API int CF_CALL cf_app_draw_onto_screen(bool clear);
+
+/**
+ * @function cf_app_get_size
+ * @category app
+ * @brief    Gets the size of the window in logical points (called "points" on Retina/HiDPI displays; use `cf_app_get_pixel_scale` to convert to physical pixels).
+ * @param    w          The width of the window in logical points.
+ * @param    h          The height of the window in logical points.
+ * @related  cf_app_set_size cf_app_get_position cf_app_set_position cf_app_get_width cf_app_get_height cf_app_get_display_scale cf_app_get_pixel_scale
+ */
+CF_API void CF_CALL cf_app_get_size(int* w, int* h);
+
+/**
+ * @function cf_app_get_width
+ * @category app
+ * @brief    Returns the size of the window width in logical points (use `cf_app_get_pixel_scale` to convert to physical pixels).
+ * @related  cf_app_set_size cf_app_get_position cf_app_set_position cf_app_get_width cf_app_get_height cf_app_get_display_scale cf_app_get_pixel_scale
+ */
+CF_API int CF_CALL cf_app_get_width(void);
+
+/**
+ * @function cf_app_get_height
+ * @category app
+ * @brief    Returns the size of the window height in logical points (use `cf_app_get_pixel_scale` to convert to physical pixels).
+ * @related  cf_app_set_size cf_app_get_position cf_app_set_position cf_app_get_width cf_app_get_height cf_app_get_display_scale cf_app_get_pixel_scale
+ */
+CF_API int CF_CALL cf_app_get_height(void);
+
+/**
+ * @function cf_app_show_window
+ * @category app
+ * @brief    Brings the app out of a minimized/hidden state.
+ * @related  cf_app_set_size cf_app_get_position cf_app_set_position cf_app_get_width cf_app_get_height cf_app_get_display_scale
+ */
+CF_API void CF_CALL cf_app_show_window(void);
+
+/**
+ * @function cf_app_get_display_scale
+ * @category app
+ * @brief    Returns the OS's suggested UI scale for the window's current display, e.g. 1.5f on a Windows desktop at 150%.
+ * @remarks  This is a hint about how large the user would like UI to appear. It is informational only: CF never applies it.
+ *           On devices that cluster pixels into points (Apple Retina, iOS) it equals `cf_app_get_pixel_scale`, which CF
+ *           does honor automatically. On Windows/Linux desktops a pixel stays a pixel regardless of this value; honor it
+ *           yourself (e.g. by picking a larger window size or UI scale at startup) if your app should follow the OS setting.
+ * @related  cf_app_set_size cf_app_get_position cf_app_set_position cf_app_get_width cf_app_get_height cf_app_get_display_scale cf_app_display_scale_was_changed
+ */
+CF_API float CF_CALL cf_app_get_display_scale(void);
+
+/**
+ * @function cf_app_display_scale_was_changed
+ * @category app
+ * @brief    Returns true if the display scale changed, such as moving from one screen to another.
+ * @related  cf_app_get_display_scale cf_app_display_scale_was_changed
+ */
+CF_API bool CF_CALL cf_app_display_scale_was_changed(void);
+
+/**
+ * @function cf_app_get_pixel_scale
+ * @category app
+ * @brief    Returns the number of physical pixels per logical point for the app's window.
+ * @remarks  This is the ratio CF actually renders at internally -- e.g. 2.0f on a 2x Retina display. Unlike
+ *           `cf_app_get_display_scale` (the OS's suggested UI content scale, which is informational only), this value
+ *           directly reflects the backbuffer/canvas pixel density and is what you'd multiply a logical size by to
+ *           get physical pixels. Returns 1.0f if `CF_APP_OPTIONS_NO_HIGH_DPI_BIT` was passed to `cf_make_app`.
+ * @related  cf_app_get_display_scale cf_app_get_size cf_app_get_canvas_width cf_app_get_canvas_height
+ */
+CF_API float CF_CALL cf_app_get_pixel_scale(void);
+
+/**
+ * @function cf_app_set_size
+ * @category app
+ * @brief    Sets the size of the window in points.
+ * @param    w          The width of the window in points (a point is a pixel unless the OS clusters pixels; see `cf_app_get_pixel_scale`).
+ * @param    h          The height of the window in points.
+ * @remarks  The app canvas and the default 2d projection follow automatically: the canvas is recreated at
+ *           `w * cf_app_get_pixel_scale()` by `h * cf_app_get_pixel_scale()` pixels and the projection spans `w` by `h` points.
+ * @related  cf_app_get_size cf_app_get_position cf_app_set_position
+ */
+CF_API void CF_CALL cf_app_set_size(int w, int h);
+
+/**
+ * @function cf_app_get_position
+ * @category app
+ * @brief    Gets the position of the window in pixels.
+ * @param    x          The x position of the window in pixels.
+ * @param    y          The y position of the window in pixels.
+ * @related  cf_app_get_size cf_app_set_size cf_app_set_position cf_app_center_window
+ */
+CF_API void CF_CALL cf_app_get_position(int* x, int* y);
+
+/**
+ * @function cf_app_set_position
+ * @category app
+ * @brief    Sets the position of the window in pixels.
+ * @param    x          The x position of the window in pixels.
+ * @param    y          The y position of the window in pixels.
+ * @related  cf_app_get_size cf_app_set_size cf_app_get_position cf_app_center_window
+ */
+CF_API void CF_CALL cf_app_set_position(int x, int y);
+
+/**
+ * @function cf_app_center_window
+ * @category app
+ * @brief    Sets the window position centered on the screen.
+ * @related  cf_app_get_size cf_app_set_size cf_app_get_position cf_app_center_window
+ */
+CF_API void CF_CALL cf_app_center_window(void);
+
+/**
+ * @function cf_app_was_resized
+ * @category app
+ * @brief    Returns true if the app was resized last frame.
+ * @related  cf_app_was_moved
+ */
+CF_API bool CF_CALL cf_app_was_resized(void);
+
+/**
+ * @function cf_app_was_moved
+ * @category app
+ * @brief    Returns true if the app was moved (not resized) last frame.
+ * @related  cf_app_was_resized
+ */
+CF_API bool CF_CALL cf_app_was_moved(void);
+
+/**
+ * @function cf_app_lost_focus
+ * @category app
+ * @brief    Returns true if the app lost focus last frame.
+ * @remarks  The app has focus if user inputs will go to the app, such as after clicking on or selecting the app.
+ * @related  cf_app_gained_focus cf_app_has_focus cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_lost_focus(void);
+
+/**
+ * @function cf_app_gained_focus
+ * @category app
+ * @brief    Returns true if the app gained focus last frame.
+ * @remarks  The app has focus if user inputs will go to the app, such as after clicking on or selecting the app.
+ * @related  cf_app_lost_focus cf_app_has_focus cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_gained_focus(void);
+
+/**
+ * @function cf_app_has_focus
+ * @category app
+ * @brief    Returns true while the app has focus currently.
+ * @remarks  The app has focus if user inputs will go to the app, such as after clicking on or selecting the app.
+ * @related  cf_app_lost_focus cf_app_gained_focus cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_has_focus(void);
+
+/**
+ * @function cf_app_request_attention
+ * @category app
+ * @brief    Requests attention for the window for a brief period.
+ * @remarks  On Windows this flashes the tab icon, and bounces the dock icon on OSX.
+ * @related  cf_app_request_attention cf_app_request_attention_continuously cf_app_request_attention_cancel
+ */
+CF_API void CF_CALL cf_app_request_attention(void);
+
+/**
+ * @function cf_app_request_attention_continuously
+ * @category app
+ * @brief    Requests attention for the window continuously.
+ * @remarks  On Windows this flashes the tab icon, and bounces the dock icon on OSX.
+ * @related  cf_app_request_attention cf_app_request_attention_continuously cf_app_request_attention_cancel
+ */
+CF_API void CF_CALL cf_app_request_attention_continuously(void);
+
+/**
+ * @function cf_app_request_attention_cancel
+ * @category app
+ * @brief    Cancels any previous requests for attention.
+ * @related  cf_app_request_attention cf_app_request_attention_continuously cf_app_request_attention_cancel
+ */
+CF_API void CF_CALL cf_app_request_attention_cancel(void);
+
+/**
+ * @function cf_app_was_minimized
+ * @category app
+ * @brief    Returns true if the app was minimized last frame.
+ * @related  cf_app_was_maximized cf_app_minimized cf_app_maximized cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_was_minimized(void);
+
+/**
+ * @function cf_app_was_maximized
+ * @category app
+ * @brief    Returns true if the app was maximized last frame.
+ * @related  cf_app_was_minimized cf_app_minimized cf_app_maximized cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_was_maximized(void);
+
+/**
+ * @function cf_app_minimized
+ * @category app
+ * @brief    Returns true while the app is currently minimized.
+ * @related  cf_app_was_minimized cf_app_was_maximized cf_app_maximized cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_minimized(void);
+
+/**
+ * @function cf_app_maximized
+ * @category app
+ * @brief    Returns true while the app is currently maximized.
+ * @related  cf_app_was_minimized cf_app_was_maximized cf_app_minimized cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_maximized(void);
+
+/**
+ * @function cf_app_was_restored
+ * @category app
+ * @brief    Returns true if the app was restored last frame.
+ * @remarks  Restored means a window's size/position was restored from a minimized/maximized state.
+ * @related  cf_app_was_minimized cf_app_was_maximized cf_app_minimized cf_app_maximized cf_app_was_restored
+ */
+CF_API bool CF_CALL cf_app_was_restored(void);
+
+/**
+ * @function cf_app_mouse_entered
+ * @category app
+ * @brief    Returns true if the mouse's coordinates began hovering over the app last frame.
+ * @remarks  This function only deals with mouse coordinates, not focus (such as `cf_app_has_focus`).
+ * @related  cf_app_mouse_exited cf_app_mouse_inside
+ */
+CF_API bool CF_CALL cf_app_mouse_entered(void);
+
+/**
+ * @function cf_app_mouse_exited
+ * @category app
+ * @brief    Returns true if the mouse's coordinates stopped hovering over the app last frame.
+ * @remarks  This function only deals with mouse coordinates, not focus (such as `cf_app_has_focus`).
+ * @related  cf_app_mouse_entered cf_app_mouse_inside
+ */
+CF_API bool CF_CALL cf_app_mouse_exited(void);
+
+/**
+ * @function cf_app_mouse_inside
+ * @category app
+ * @brief    Returns true while the mouse's coordinates are hovering the app currently.
+ * @remarks  This function only deals with mouse coordinates, not focus (such as `cf_app_has_focus`).
+ * @related  cf_app_mouse_entered cf_app_mouse_exited
+ */
+CF_API bool CF_CALL cf_app_mouse_inside(void);
+
+/**
+ * @function cf_app_init_imgui
+ * @category app
+ * @brief    Initializes Dear ImGui.
+ * @remarks  [Dear ImGui](https://github.com/ocornut/imgui) is an excellent UI library for debugging, great for making tools and editors.
+ *           After calling this init function you can call into Dear ImGui's functions. Typecast the result to `ImGuiContext*` (after including dcimgui.h).
+ */
+CF_API void* CF_CALL cf_app_init_imgui(void);
+
+/**
+ * @enum     CF_MSAA
+ * @category app
+ * @brief    Multisample count used for MSAA for the app's offscreen canvas.
+ * @remarks  This function turns on MSAA.
+ * @related  cf_app_set_msaa cf_msaa_string
+ */
+#define CF_MSAA_DEFS \
+	/* @entry No multisampling. */                          \
+	CF_ENUM(MSAA_NONE, 0)                                   \
+	/* @entry Multisample anti-aliasing with 2x samples. */ \
+	CF_ENUM(MSAA_2X,   1)                                   \
+	/* @entry Multisample anti-aliasing with 4x samples. */ \
+	CF_ENUM(MSAA_4X,   2)                                   \
+	/* @entry Multisample anti-aliasing with 8x samples. */ \
+	CF_ENUM(MSAA_8X,   3)                                   \
+	/* @end */
+
+typedef enum CF_MSAA
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_MSAA_DEFS
+	#undef CF_ENUM
+} CF_MSAA;
+
+/**
+ * @function cf_msaa_string
+ * @category app
+ * @brief    Returns a `CF_MSAA` value as a string.
+ * @related  cf_app_set_msaa CF_MSAA
+ */
+CF_INLINE const char* cf_msaa_string(CF_MSAA msaa) {
+	switch (msaa) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_MSAA_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @enum     CF_PresentMode
+ * @category app
+ * @brief    Describes a swapchain present mode -- vsync off, plain vsync, or low-latency mailbox vsync.
+ * @related  cf_app_get_present_mode cf_app_set_present_mode cf_present_mode_string
+ */
+#define CF_PRESENT_MODE_DEFS \
+	/* @entry Vsync is off; frames present immediately (tearing may occur). */ \
+	CF_ENUM(PRESENT_MODE_IMMEDIATE, 0) \
+	/* @entry Vsync is on; frames present synchronized to the display refresh. */ \
+	CF_ENUM(PRESENT_MODE_VSYNC,     1) \
+	/* @entry Low-latency vsync; the swapchain may be updated more than once before a frame is presented. */ \
+	CF_ENUM(PRESENT_MODE_MAILBOX,   2) \
+	/* @end */
+
+typedef enum CF_PresentMode
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_PRESENT_MODE_DEFS
+	#undef CF_ENUM
+} CF_PresentMode;
+
+/**
+ * @function cf_present_mode_string
+ * @category app
+ * @brief    Returns a `CF_PresentMode` value as a string.
+ * @param    mode       The present mode to convert to a string.
+ * @return   Returns a string representing `mode`, e.g. `CF_PRESENT_MODE_VSYNC` returns "CF_PRESENT_MODE_VSYNC".
+ * @related  cf_app_get_present_mode CF_PresentMode
+ */
+CF_INLINE const char* cf_present_mode_string(CF_PresentMode mode) {
+	switch (mode) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_PRESENT_MODE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @function cf_app_set_msaa
+ * @category app
+ * @brief    Sets the MSAA sample count for the app's offscreen canvas.
+ * @param    sample_count  The number of MSAA samples (e.g. 1, 2, 4, 8).
+ * @return   Returns true if the `sample_count` was valid for the given GPU.
+ * @remarks  This affects rendering quality by enabling or disabling multisample anti-aliasing.
+ *           If `sample_count` is 1, MSAA is disabled (default). Higher values enable smoother edge rendering.
+ *           The value should match a supported sample count for the current GPU.
+ *           Note: If this is enabled you can not sample from the app's canvas, i.e. `cf_app_get_canvas` is then
+ *           effectively write-only.
+ * @related  CF_MSAA CF_Canvas
+ */
+CF_API bool CF_CALL cf_app_set_msaa(int sample_count);
+
+/**
+ * @function cf_app_get_canvas
+ * @category app
+ * @brief    Fetches the app's internal canvas for displaying content on the screen.
+ * @remarks  This is an advanced function. If you just want to draw things on screen, try checking out `CF_Sprite`.
+ *           The app's canvas can be used to implement low-level graphics features, such as multi-pass algorithms. Be careful about
+ *           calling `cf_app_set_canvas_size`, as it will invalidate any references to the app's canvas.
+ *           
+ *           If you fetch this canvas and have MSAA on (see `cf_app_set_msaa`) you may *not* sample from the canvas.
+ * @related  cf_app_set_canvas_size cf_app_get_canvas_width cf_app_get_canvas_height cf_app_set_present_mode cf_app_get_present_mode
+ */
+CF_API CF_Canvas CF_CALL cf_app_get_canvas(void);
+
+/**
+ * @function cf_app_set_canvas_size
+ * @category app
+ * @brief    Resizes the app's internal canvas to a new w/h, in pixels.
+ * @param    w          The width in pixels to resize the canvas to.
+ * @param    h          The height in pixels to resize the canvas to.
+ * @remarks  Be careful about calling this function, as it will invalidate any old references from `cf_app_get_canvas`.
+ *
+ *           The default 2d projection is rebuilt to span `w` by `h`, so the draw API works in the canvas's own pixels:
+ *           a 320x180 retro target draws as a 320x180 world and is blitted up to the window (see `cf_app_set_canvas_blit_filter`).
+ *
+ *           This is a one-shot override. The app's canvas is automatically recreated at window size (in points) times
+ *           `cf_app_get_pixel_scale` on every canvas recreation event -- a window resize, moving to a display with a
+ *           different pixel density, `cf_app_set_size`, or `cf_app_set_msaa` -- and the projection goes back to spanning
+ *           the window in points, so a custom size lasts only until the next such event. For a persistent fixed-resolution
+ *           render target (e.g. a retro/pixel-art look) make your own canvas with `cf_make_canvas` and draw it scaled-up
+ *           with `cf_draw_canvas`, or re-apply the size when `cf_app_was_resized`; see the canvas_modes sample.
+ * @related  cf_app_get_canvas cf_app_get_canvas_width cf_app_get_canvas_height cf_app_get_pixel_scale cf_app_set_canvas_blit_filter cf_make_canvas cf_draw_canvas
+ */
+CF_API void CF_CALL cf_app_set_canvas_size(int w, int h);
+
+/**
+ * @function cf_app_get_canvas_width
+ * @category app
+ * @brief    Gets the app's canvas width in pixels.
+ * @related  cf_app_get_canvas cf_app_set_canvas_size cf_app_get_canvas_height cf_app_set_present_mode cf_app_get_present_mode
+ */
+CF_API int CF_CALL cf_app_get_canvas_width(void);
+
+/**
+ * @function cf_app_get_canvas_height
+ * @category app
+ * @brief    Gets the app's canvas height in pixels.
+ * @related  cf_app_get_canvas cf_app_set_canvas_size cf_app_get_canvas_width cf_app_set_present_mode cf_app_get_present_mode
+ */
+CF_API int CF_CALL cf_app_get_canvas_height(void);
+
+/**
+ * @function cf_app_set_canvas_blit_filter
+ * @category app
+ * @brief    Sets the filter used when the app's canvas is blitted onto the screen, if their sizes differ.
+ * @param    filter     The filter to use: `CF_FILTER_NEAREST` (default; crisp/blocky, good for pixel art) or `CF_FILTER_LINEAR` (smooth).
+ * @remarks  This only matters when the app's canvas size doesn't match the window's physical pixel size -- for example
+ *           after resizing the canvas with `cf_app_set_canvas_size`. When the canvas already matches the physical size
+ *           (the default), this setting has no visible effect since no stretching occurs.
+ * @related  cf_app_set_canvas_size cf_app_get_canvas_width cf_app_get_canvas_height CF_Filter
+ */
+CF_API void CF_CALL cf_app_set_canvas_blit_filter(CF_Filter filter);
+
+/**
+ * @function cf_app_set_present_mode
+ * @category app
+ * @brief    Sets the swapchain present mode via the graphical backend (if supported).
+ * @param    mode       The present mode to switch to -- `CF_PRESENT_MODE_IMMEDIATE`, `CF_PRESENT_MODE_VSYNC`, or `CF_PRESENT_MODE_MAILBOX`.
+ * @return   Returns true if `mode` was actually applied by the backend. Returns false if the backend rejected
+ *           the request (e.g. mailbox is unsupported on the Metal backend), in which case the present mode is
+ *           left unchanged -- see `cf_app_get_present_mode`. `CF_PRESENT_MODE_VSYNC` is always supported.
+ * @remarks  Present modes are mutually exclusive -- there is only ever one active mode at a time. Mailbox is
+ *           similar to vsync but with reduced latency: when rendering too quickly the frame may be updated
+ *           more than once before it is sent off the GPU.
+ * @related  cf_app_get_canvas cf_app_set_canvas_size cf_app_get_canvas_width cf_app_get_present_mode CF_PresentMode
+ */
+CF_API bool CF_CALL cf_app_set_present_mode(CF_PresentMode mode);
+
+/**
+ * @function cf_app_get_present_mode
+ * @category app
+ * @brief    Returns the swapchain present mode currently in effect.
+ * @return   Returns the currently active `CF_PresentMode`.
+ * @remarks  Reflects the mode actually applied by the backend, not merely the last one requested -- if a call
+ *           to `cf_app_set_present_mode` fails, the present mode is unchanged.
+ * @related  cf_app_set_present_mode CF_PresentMode
+ */
+CF_API CF_PresentMode CF_CALL cf_app_get_present_mode(void);
+
+/**
+ * @function cf_app_set_windowed_mode
+ * @category app
+ * @brief    Sets the application to windowed mode.
+ * @related  cf_app_set_windowed_mode cf_app_set_borderless_fullscreen_mode cf_app_set_fullscreen_mode cf_app_set_title
+ */
+CF_API void CF_CALL cf_app_set_windowed_mode(void);
+
+/**
+ * @function cf_app_set_borderless_fullscreen_mode
+ * @category app
+ * @brief    Sets the application mode to "fake fullscreen" without a border.
+ * @related  cf_app_set_windowed_mode cf_app_set_borderless_fullscreen_mode cf_app_set_fullscreen_mode cf_app_set_title
+ */
+CF_API void CF_CALL cf_app_set_borderless_fullscreen_mode(void);
+
+/**
+ * @function cf_app_set_fullscreen_mode
+ * @category app
+ * @brief    Sets the application true fullscreen mode.
+ * @related  cf_app_set_windowed_mode cf_app_set_borderless_fullscreen_mode cf_app_set_fullscreen_mode cf_app_set_title
+ */
+CF_API void CF_CALL cf_app_set_fullscreen_mode(void);
+
+/**
+ * @function cf_app_set_title
+ * @category app
+ * @brief    Sets the window title.
+ * @related  cf_app_set_windowed_mode cf_app_set_borderless_fullscreen_mode cf_app_set_fullscreen_mode cf_app_set_title cf_app_set_icon
+ */
+CF_API void CF_CALL cf_app_set_title(const char* title);
+
+/**
+ * @function cf_app_set_icon
+ * @category app
+ * @brief    Sets the icon for the application.
+ * @param    virtual_path_to_png  A path to a png file. See [Virtual File System](https://randygaul.github.io/cute_framework/topics/virtual_file_system).
+ * @remarks  The icon file must be a png image. Suggested image dimensions are 32x32, 48x48, or 64x64.
+ * @related  cf_app_set_title cf_app_set_icon
+ */
+CF_API void CF_CALL cf_app_set_icon(const char* virtual_path_to_png);
+
+/**
+ * @function cf_app_get_framerate
+ * @category app
+ * @brief    Returns the current framerate of the application.
+ * @related  cf_app_get_framerate
+ */
+CF_API float CF_CALL cf_app_get_framerate(void);
+
+/**
+ * @enum     CF_PowerState
+ * @category app
+ * @brief    The states of power for the application.
+ * @related  CF_PowerInfo cf_app_power_info
+ */
+#define CF_POWER_STATE_DEFS \
+	/* @entry error determining power status. */        \
+	CF_ENUM(POWER_STATE_ERROR, -1)                      \
+	/* @entry Cannot determine power status. */         \
+	CF_ENUM(POWER_STATE_UNKNOWN, 0)                     \
+	/* @entry Not plugged in and running on battery. */ \
+	CF_ENUM(POWER_STATE_ON_BATTERY, 1)                  \
+	/* @entry Plugged in with no battery available. */  \
+	CF_ENUM(POWER_STATE_NO_BATTERY, 2)                  \
+	/* @entry Plugged in and charging battery. */       \
+	CF_ENUM(POWER_STATE_CHARGING, 3)                    \
+	/* @entry Plugged in and battery is charged. */     \
+	CF_ENUM(POWER_STATE_CHARGED, 4)                     \
+	/* @end */
+
+typedef enum CF_PowerState
+{
+	#define CF_ENUM(K, V) CF_##K = V,
+	CF_POWER_STATE_DEFS
+	#undef CF_ENUM
+} CF_PowerState;
+
+/**
+ * @function cf_power_state_to_string
+ * @category app
+ * @brief    Convert an enum `CF_PowerState` to a c-style string.
+ * @param    state        The state to convert to a string.
+ * @related  cf_app_power_info CF_PowerState CF_PowerInfo
+ */
+CF_INLINE const char* cf_power_state_to_string(CF_PowerState state) {
+	switch (state) {
+	#define CF_ENUM(K, V) case CF_##K: return CF_STRINGIZE(CF_##K);
+	CF_POWER_STATE_DEFS
+	#undef CF_ENUM
+	default: return NULL;
+	}
+}
+
+/**
+ * @struct   CF_PowerInfo
+ * @category app
+ * @brief    Detailed information about the power level/status of the application.
+ * @related  cf_app_power_info cf_power_state_to_string CF_PowerState
+ */
+typedef struct CF_PowerInfo
+{
+	/* @member Enumeration `CF_PowerState` for the power state.*/
+	CF_PowerState state;
+
+	/* @member The seconds of battery life left. -1 means not running on the battery, or unable to get a valid value. */
+	int seconds_left;
+
+	/* @member The percentage of battery life left from 0 to 100. -1 means not running on the battery, or unable to get a valid value. */
+	int percentage_left;
+} CF_PowerInfo;
+// @end
+
+/**
+ * @function cf_app_power_info
+ * @category app
+ * @brief    Fetches detailed power info about the application.
+ * @return   Returns a `CF_PowerInfo` struct.
+ * @related  CF_PowerInfo cf_power_state_to_string CF_PowerState
+ */
+CF_API CF_PowerInfo CF_CALL cf_app_power_info(void);
+
+struct SDL_Window;
+
+/**
+ * @function cf_app_get_window
+ * @category app
+ * @brief    Gets the application window.
+ * @return   Returns a `SDL_Window` handle.
+ */
+CF_API struct SDL_Window* CF_CALL cf_app_get_window(void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
+//--------------------------------------------------------------------------------------------------
+// C++ API
+
+#ifdef CF_CPP
+
+namespace Cute
+{
+
+CF_INLINE CF_DisplayID default_display() { return cf_default_display(); }
+CF_INLINE CF_DisplayID* get_display_list() { return cf_get_display_list(); }
+CF_INLINE void free_display_list(CF_DisplayID* display_list) { cf_free_display_list(display_list); }
+CF_INLINE int display_count() { return cf_display_count(); }
+CF_INLINE int display_x(CF_DisplayID display_id = cf_default_display()) { return cf_display_x(display_id); }
+CF_INLINE int display_y(CF_DisplayID display_id = cf_default_display()) { return cf_display_y(display_id); }
+CF_INLINE int display_width(CF_DisplayID display_id = cf_default_display()) { return cf_display_width(display_id); }
+CF_INLINE int display_height(CF_DisplayID display_id = cf_default_display()) { return cf_display_height(display_id); }
+CF_INLINE float display_refresh_rate(CF_DisplayID display_id = cf_default_display()) { return cf_display_refresh_rate(display_id); }
+CF_INLINE CF_Rect display_bounds(CF_DisplayID display_id = cf_default_display()) { return cf_display_bounds(display_id); }
+CF_INLINE const char* display_name(CF_DisplayID display_id = cf_default_display()) { return cf_display_name(display_id); }
+CF_INLINE CF_DisplayOrientation display_orientation(CF_DisplayID display_id = cf_default_display()) { return cf_display_orientation(display_id); }
+
+CF_INLINE CF_Result make_app(const char* window_title, CF_DisplayID display_id, int x, int y, int w, int h, int options = 0, const char* argv0 = NULL) { return cf_make_app(window_title, display_id, x, y, w, h, options, argv0); }
+CF_INLINE void destroy_app() { cf_destroy_app(); }
+CF_INLINE bool app_is_running() { return cf_app_is_running(); }
+CF_INLINE void app_signal_shutdown() { cf_app_signal_shutdown(); }
+CF_INLINE void app_update(CF_OnUpdateFn* on_update = NULL) { cf_app_update(on_update); }
+CF_INLINE void app_push_event(const union SDL_Event* sdl_event) { cf_app_push_event(sdl_event); }
+CF_INLINE int app_draw_onto_screen(bool clear = false) { return cf_app_draw_onto_screen(clear); }
+CF_INLINE void app_get_size(int* w, int* h) { return cf_app_get_size(w, h); }
+CF_INLINE void app_set_size(int w, int h) { return cf_app_set_size(w, h); }
+CF_INLINE void app_get_position(int* x, int* y) { return cf_app_get_position(x, y); }
+CF_INLINE void app_set_position(int x, int y) { return cf_app_set_position(x, y); }
+CF_INLINE void app_show_window() { return cf_app_show_window(); }
+CF_INLINE int app_get_width() { return cf_app_get_width(); }
+CF_INLINE int app_get_height() { return cf_app_get_height(); }
+CF_INLINE float app_get_display_scale() { return cf_app_get_display_scale(); }
+CF_INLINE bool app_display_scale_was_changed() { return cf_app_display_scale_was_changed(); }
+CF_INLINE float app_get_pixel_scale() { return cf_app_get_pixel_scale(); }
+CF_INLINE void app_center_window() { cf_app_center_window(); }
+CF_INLINE bool app_was_resized() { return cf_app_was_resized(); }
+CF_INLINE bool app_was_moved() { return cf_app_was_moved(); }
+CF_INLINE bool app_lost_focus() { return cf_app_lost_focus(); }
+CF_INLINE bool app_gained_focus() { return cf_app_gained_focus(); }
+CF_INLINE bool app_has_focus() { return cf_app_has_focus(); }
+CF_INLINE void app_request_attention() { cf_app_request_attention(); }
+CF_INLINE void app_request_attention_continuously() { cf_app_request_attention_continuously(); }
+CF_INLINE void app_request_attention_cancel() { cf_app_request_attention_cancel(); }
+CF_INLINE bool app_was_minimized() { return cf_app_was_minimized(); }
+CF_INLINE bool app_was_maximized() { return cf_app_was_maximized(); }
+CF_INLINE bool app_minimized() { return cf_app_minimized(); }
+CF_INLINE bool app_maximized() { return cf_app_maximized(); }
+CF_INLINE bool app_was_restored() { return cf_app_was_restored(); }
+CF_INLINE bool app_mouse_entered() { return cf_app_mouse_entered(); }
+CF_INLINE bool app_mouse_exited() { return cf_app_mouse_exited(); }
+CF_INLINE bool app_mouse_inside() { return cf_app_mouse_inside(); }
+CF_INLINE int app_get_canvas_width() { return cf_app_get_canvas_width(); }
+CF_INLINE int app_get_canvas_height() { return cf_app_get_canvas_height(); }
+CF_INLINE bool app_set_present_mode(CF_PresentMode mode) { return cf_app_set_present_mode(mode); }
+CF_INLINE CF_PresentMode app_get_present_mode() { return cf_app_get_present_mode(); }
+CF_INLINE void app_set_windowed_mode() { cf_app_set_windowed_mode(); }
+CF_INLINE void app_set_borderless_fullscreen_mode() { cf_app_set_borderless_fullscreen_mode(); }
+CF_INLINE void app_set_fullscreen_mode() { cf_app_set_fullscreen_mode(); }
+CF_INLINE void app_set_title(const char* title) { cf_app_set_title(title); }
+CF_INLINE void app_set_icon(const char* virtual_path_to_png) { cf_app_set_icon(virtual_path_to_png); }
+CF_INLINE float app_get_framerate() { return cf_app_get_framerate(); }
+
+CF_INLINE void* app_init_imgui() { return cf_app_init_imgui(); }
+CF_INLINE void app_set_msaa(int msaa) { cf_app_set_msaa(msaa); }
+CF_INLINE CF_Canvas app_get_canvas() { return cf_app_get_canvas(); }
+CF_INLINE void app_set_canvas_size(int w, int h) { cf_app_set_canvas_size(w, h); }
+CF_INLINE void app_set_canvas_blit_filter(CF_Filter filter) { cf_app_set_canvas_blit_filter(filter); }
+CF_INLINE CF_PowerInfo app_power_info() { return cf_app_power_info(); }
+CF_INLINE struct SDL_Window* app_get_window() { return cf_app_get_window(); }
+
+}
+
+#endif // CF_CPP
+
+#endif // CF_APP_H
